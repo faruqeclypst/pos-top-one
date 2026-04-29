@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
+import { Html5Qrcode } from "html5-qrcode";
 
 // ── Types ─────────────────────────────────────────────────
 interface CartItem extends Product { cartQty: number; }
@@ -155,6 +156,60 @@ export default function POSPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [tableNumber, setTableNumber] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+
+  // ── Scanner Logic ─────────────────────────────────────────
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current = null;
+      } catch (err) {
+        console.error("Stop scanner failed:", err);
+      }
+    }
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    try {
+      const scanner = new Html5Qrcode("barcode-reader");
+      scannerRef.current = scanner;
+      
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 150 },
+        },
+        (decodedText) => {
+          const product = products?.find(p => p.sku === decodedText || p.id.toString() === decodedText || p.barcode === decodedText);
+          if (product) {
+            addToCart(product);
+            setIsScannerOpen(false);
+          }
+        },
+        () => {}
+      );
+    } catch (err) {
+      console.error("Scanner failed:", err);
+    }
+  }, [products]);
+
+  useEffect(() => {
+    if (isScannerOpen) {
+      startScanner();
+    } else {
+      stopScanner();
+    }
+    return () => { stopScanner(); };
+  }, [isScannerOpen, startScanner, stopScanner]);
+
+  const handleScanBarcode = () => {
+    setIsScannerOpen(true);
+  };
 
   const filtered = products?.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -275,7 +330,7 @@ export default function POSPage() {
             </div>
             <button
               className="w-11 h-11 rounded-xl bg-muted/60 flex items-center justify-center touchable shrink-0"
-              onClick={() => alert("Membuka kamera barcode scanner...")}
+              onClick={handleScanBarcode}
             >
               <ScanLine className="w-5 h-5 text-foreground" />
             </button>
@@ -688,6 +743,34 @@ export default function POSPage() {
                 Selesai <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── Barcode Scanner Overlay ── */}
+      {isScannerOpen && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
+          <div className="flex items-center justify-between px-5 pt-12 pb-4 text-white">
+            <h2 className="text-base font-bold">Scan Barcode</h2>
+            <button 
+              onClick={() => setIsScannerOpen(false)}
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 relative flex items-center justify-center">
+            <div id="barcode-reader" className="w-full h-full max-h-[60vh]" />
+            <div className="absolute inset-0 border-[2px] border-primary/50 pointer-events-none">
+              <div className="absolute inset-0 bg-black/40" style={{ clipPath: "polygon(0% 0%, 0% 100%, 15% 100%, 15% 35%, 85% 35%, 85% 65%, 15% 65%, 15% 100%, 100% 100%, 100% 0%)" }} />
+              <div className="absolute left-[15%] top-[35%] right-[15%] bottom-[35%] border-2 border-primary rounded-xl shadow-[0_0_20px_rgba(80,70,230,0.5)]" />
+              <div className="absolute left-[15%] top-[50%] right-[15%] h-0.5 bg-primary animate-pulse" />
+            </div>
+          </div>
+
+          <div className="p-8 text-center text-white/70">
+            <p className="text-sm">Arahkan kamera ke barcode produk</p>
+            <p className="text-[10px] mt-2 opacity-50 uppercase tracking-widest">Powered by TokoKu Scanner</p>
           </div>
         </div>
       )}
