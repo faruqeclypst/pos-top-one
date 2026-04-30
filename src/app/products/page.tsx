@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 // ── Skeleton ──────────────────────────────────────────────
 function ProductsSkeleton() {
   return (
-    <div className="animate-in fade-in duration-300">
+    <div className="">
       <div className="w-full h-48 shimmer mb-6" />
       <div className="px-4 space-y-4 max-w-5xl mx-auto w-full">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -270,7 +270,7 @@ export default function ProductsPage() {
   if (!products) return <ProductsSkeleton />;
 
   return (
-    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+    <div className="pb-32  min-h-screen bg-background">
       <PageHeader
         title="Katalog Barang"
         subtitle="Manajemen Stok"
@@ -348,7 +348,7 @@ export default function ProductsPage() {
             filtered?.map((p, idx) => (
               <div 
                 key={p.id} 
-                className="animate-in slide-in-from-bottom-2 duration-300 fill-mode-both"
+                className=""
                 style={{ animationDelay: `${idx * 30}ms` }}
               >
                 <ProductBentoRow
@@ -512,7 +512,7 @@ export default function ProductsPage() {
       )}
       {/* ── Scanner Overlay ── */}
       {isScannerOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 ">
           <div className="w-full max-w-md bg-background rounded-3xl overflow-hidden relative shadow-2xl">
             <div className="p-4 border-b border-border/50 flex items-center justify-between">
               <h3 className="font-bold text-sm">Scan Barcode Produk</h3>

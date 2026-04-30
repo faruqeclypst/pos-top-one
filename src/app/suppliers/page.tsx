@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 // ── Skeleton ──────────────────────────────────────────────
 function SuppliersSkeleton() {
   return (
-    <div className="animate-in fade-in duration-300">
+    <div className="">
       <div className="w-full h-48 shimmer mb-6" />
       <div className="px-5 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-6xl mx-auto">
         {[1, 2, 3, 4].map(i => <div key={i} className="h-24 rounded-2xl shimmer" />)}
@@ -159,7 +159,7 @@ export default function SuppliersPage() {
   if (!suppliers) return <SuppliersSkeleton />;
 
   return (
-    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+    <div className="pb-32  min-h-screen bg-background">
       <PageHeader
         title="Pemasok Barang"
         subtitle="Daftar Mitra"
@@ -238,7 +238,7 @@ export default function SuppliersPage() {
             filtered?.map((s, idx) => (
               <div 
                 key={s.id} 
-                className="animate-in slide-in-from-bottom-2 duration-300 fill-mode-both"
+                className=""
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 <SupplierBentoRow

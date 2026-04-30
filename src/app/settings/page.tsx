@@ -157,7 +157,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+    <div className="pb-32  min-h-screen bg-background">
       <PageHeader
         title="Pengaturan"
         subtitle="Konfigurasi"

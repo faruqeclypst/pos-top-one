@@ -66,7 +66,7 @@ function filterByRange(all: Transaction[], range: string): Transaction[] {
 
 function ReportsSkeleton() {
   return (
-    <div className="animate-in fade-in duration-300">
+    <div className="">
       <div className="w-full h-48 shimmer mb-6" />
       <div className="px-4 space-y-4 max-w-4xl mx-auto w-full">
         <div className="grid grid-cols-3 gap-3">
@@ -139,7 +139,7 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+    <div className="pb-32  min-h-screen bg-background">
       <PageHeader
         title="Laporan Bisnis"
         subtitle="Analisis Performa"
@@ -174,7 +174,7 @@ export default function ReportsPage() {
                 className={cn(
                   "px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
                   range === r.id 
-                    ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                    ? "bg-primary text-white" 
                     : "bg-muted/40 text-muted-foreground hover:bg-muted"
                 )}
               >
@@ -192,15 +192,16 @@ export default function ReportsPage() {
 
       <div className="w-full px-5 pt-8 mx-auto space-y-8 max-w-[1600px] pb-32">
         {/* Main Revenue Card */}
-        <div className="animate-in slide-in-from-bottom-4 duration-500 fill-mode-both">
+        <div className="">
           <Card className="gradient-primary border-none p-8 relative overflow-hidden text-white shadow-2xl shadow-primary/30 rounded-[2rem]">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-20 -mt-20 animate-pulse" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/5 blur-[60px] rounded-full -ml-20 -mb-20" />
             
             <div className="relative z-10 space-y-6">
               <div className="flex items-center justify-between">
-                <div className="bg-white/20 backdrop-blur-md p-1.5 rounded-2xl w-11 h-11 flex items-center justify-center overflow-hidden">
-                  <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                <div className="bg-white dark:bg-zinc-900 p-1.5 rounded-2xl w-11 h-11 flex items-center justify-center overflow-hidden shadow-sm">
+                  <img src="/logo-default.png" alt="Logo" className="w-full h-full object-contain block dark:hidden" />
+                  <img src="/logo-dark.png" alt="Logo" className="w-full h-full object-contain hidden dark:block" />
                 </div>
                 <Badge className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md px-3 py-1 font-black text-[0.625rem] tracking-widest uppercase">
                   {RANGES.find(r => r.id === range)?.label}
@@ -229,7 +230,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Payment Methods */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-bottom-4 duration-300 delay-150 fill-mode-both">
           {Object.entries(byMethod).map(([method, amount]) => (
             <Card key={method} className="p-4 border-none shadow-sm bg-card/40 backdrop-blur-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -250,7 +251,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Transaction History */}
-        <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
+        <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300 delay-300 fill-mode-both">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Riwayat Penjualan</h3>
             <Badge variant="outline" className="text-[0.5625rem] font-bold border-muted-foreground/20 text-muted-foreground uppercase">

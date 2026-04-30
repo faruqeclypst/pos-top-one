@@ -67,7 +67,7 @@ export default function ConfirmDialog({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className="relative bg-background w-full max-w-[340px] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-border/50"
           >
             <div className="p-8 text-center">

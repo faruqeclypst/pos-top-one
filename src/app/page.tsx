@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 // ── Skeleton ─────────────────────────────────────────────
 function DashboardSkeleton() {
   return (
-    <div className="animate-in fade-in duration-300">
+    <div className="">
       <div className="w-full h-48 shimmer mb-6" />
       <div className="px-4 space-y-5">
         <div className="grid grid-cols-2 gap-3">
@@ -95,7 +95,7 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? "Selamat Pagi" : hour < 17 ? "Selamat Siang" : "Selamat Malam";
 
   return (
-    <div className="pb-28 animate-in fade-in duration-500 min-h-screen bg-background">
+    <div className="pb-28 min-h-screen bg-background">
       <PageHeader
         title={profile?.name || "TokoKu POS"}
         subtitle={`${greeting} 👋`}

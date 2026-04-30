@@ -412,7 +412,7 @@ export default function POSPage() {
   if (!products) return <POSSkeleton />;
 
   return (
-    <div className="h-screen bg-background overflow-hidden flex flex-col animate-in fade-in duration-500">
+    <div className="h-screen bg-background overflow-hidden flex flex-col">
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-[1600px] mx-auto w-full">
         {/* ── Left Side: Products ── */}
         <div className="flex flex-col flex-1 min-w-0 h-full border-r border-border/50">
@@ -605,7 +605,7 @@ export default function POSPage() {
       {/* ── Mobile Cart Sheet ── */}
       {isCartOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col justify-end lg:hidden" onClick={e => e.target === e.currentTarget && setIsCartOpen(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsCartOpen(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm " onClick={() => setIsCartOpen(false)} />
           <div className="relative bg-background rounded-t-3xl max-h-[82vh] flex flex-col animate-in slide-in-from-bottom duration-300" style={{ boxShadow: "0 -8px 40px rgb(0 0 0 / 0.15)" }}>
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-border" />
@@ -746,7 +746,7 @@ export default function POSPage() {
 
       {/* ── Success Overlay ── */}
       {isSuccessOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 ">
           <div className="bg-background w-full max-w-sm rounded-3xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
             <div className="flex-1 overflow-y-auto p-6 scroll-area">
               {/* Actual Receipt to Capture */}
@@ -898,7 +898,7 @@ export default function POSPage() {
       )}
       {/* ── Barcode Scanner Overlay ── */}
       {isScannerOpen && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col ">
           <div className="flex items-center justify-between px-5 pt-12 pb-4 text-white">
             <h2 className="text-base font-bold">Scan Barcode</h2>
             <button
@@ -926,7 +926,7 @@ export default function POSPage() {
       )}
       {/* ── Draft Bills Modal ── */}
       {isBillsOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 ">
           <div className="bg-background w-full max-w-md rounded-3xl overflow-hidden flex flex-col max-h-[80vh] shadow-2xl animate-in zoom-in-95 duration-300">
             <div className="p-5 border-b border-border/50 flex items-center justify-between">
               <h2 className="text-base font-bold flex items-center gap-2">
