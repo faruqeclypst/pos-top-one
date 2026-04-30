@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { Camera } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import { useLiveQuery } from "dexie-react-hooks";
 import db, { type Product, type Supplier, type Category } from "@/lib/db";
 import {
@@ -9,7 +11,7 @@ import {
   X, ChevronRight, Tag, Layers, ArrowUpDown, Info, Building2,
   ArrowDownCircle, History, TrendingUp, CheckCircle2
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, playBeep } from "@/lib/utils";
 import ImageUploader from "@/components/ImageUploader";
 import PageHeader from "@/components/PageHeader";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -39,13 +41,13 @@ function ProductsSkeleton() {
 // ── Bento Table Header ─────────────────────────────────────
 function ProductTableHeader() {
   return (
-    <div className="hidden lg:grid grid-cols-[80px_1fr_180px_160px_150px_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
-      <span>Gambar</span>
+    <div className="grid grid-cols-[40px_1fr_70px_80px_40px] lg:grid-cols-[80px_1fr_180px_160px_150px_120px] gap-2 lg:gap-4 px-3 lg:px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
+      <span></span>
       <span>Produk</span>
-      <span>Kategori</span>
-      <span>Stok</span>
-      <span>Harga/HPP</span>
-      <span className="text-right">Aksi</span>
+      <span className="hidden lg:block">Kategori</span>
+      <span className="text-center lg:text-left">Stok</span>
+      <span className="text-right lg:text-left">Harga</span>
+      <span className="text-right"></span>
     </div>
   );
 }
@@ -62,75 +64,53 @@ function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }:
   const stockStatus = product.stock <= 0 ? "error" : product.stock <= 5 ? "warning" : "success";
 
   return (
-    <Card className="group p-4 lg:p-0 overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-3 rounded-2xl">
-      <div className="flex flex-col lg:grid lg:grid-cols-[80px_1fr_180px_160px_150px_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
+    <Card className="group overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-1.5 rounded-xl">
+      <div className="grid grid-cols-[40px_1fr_70px_80px_40px] lg:grid-cols-[80px_1fr_180px_160px_150px_120px] items-center gap-2 lg:gap-4 h-14 lg:h-16 px-3 lg:px-4">
         {/* Box 1: Image */}
-        <div className="w-20 h-20 lg:w-14 lg:h-14 rounded-2xl bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-colors">
+        <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-lg bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-colors shrink-0">
           {imageUrl ? (
-            <img src={imageUrl} alt={product.name} className="w-full h-full object-contain p-1.5" />
+            <img src={imageUrl} alt={product.name} className="w-full h-full object-contain p-0.5" />
           ) : (
-            <Package className="w-6 h-6 text-muted-foreground/20" />
+            <Package className="w-3.5 h-3.5 text-muted-foreground/20" />
           )}
         </div>
 
         {/* Box 2: Name & Info */}
-        <div className="flex-1 w-full min-w-0 text-center lg:text-left">
-          <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{product.name}</h3>
-          <div className="flex items-center justify-center lg:justify-start gap-2 mt-1">
-            <span className="text-[0.5625rem] font-mono text-muted-foreground/60 uppercase tracking-tighter">{product.sku || "NO-SKU"}</span>
-            {supplierName && (
-              <span className="text-[0.5625rem] text-muted-foreground/40 font-medium truncate max-w-[100px]">/ {supplierName}</span>
-            )}
-          </div>
+        <div className="min-w-0">
+          <h3 className="text-[0.6875rem] lg:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors leading-tight">{product.name}</h3>
+          <p className="text-[7px] lg:text-[8px] font-mono text-muted-foreground/60 uppercase truncate">{product.sku || "NO-SKU"}</p>
         </div>
 
-        {/* Box 3: Category */}
+        {/* Box 3: Category (Hidden on Mobile) */}
         <div className="hidden lg:flex items-center">
-          <Badge variant="outline" className="text-[0.5625rem] font-bold h-5 border-muted-foreground/20 text-muted-foreground bg-muted/20">
+          <Badge variant="outline" className="text-[8px] font-bold h-4 border-muted-foreground/20 text-muted-foreground bg-muted/20">
             {product.category || "Umum"}
           </Badge>
         </div>
 
         {/* Box 4: Stock */}
-        <div className="flex lg:flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start px-4 lg:px-0 py-2 lg:py-0 bg-muted/20 lg:bg-transparent rounded-xl">
-          <span className="lg:hidden text-[0.625rem] font-black text-muted-foreground uppercase tracking-widest">Stok</span>
+        <div className="flex items-center justify-center lg:justify-start">
           <Badge 
             variant={stockStatus === "error" ? "destructive" : stockStatus === "warning" ? "warning" : "success"} 
-            className="h-6 font-black text-[0.625rem] px-3 shadow-sm border-none"
+            className="h-4 lg:h-5 font-black text-[7px] lg:text-[8px] px-1.5 lg:px-2 shadow-sm border-none"
           >
-            {product.stock <= 0 ? "HABIS" : `${product.stock} ${product.unit || "Pcs"}`}
+            {product.stock <= 0 ? "0" : product.stock} {product.unit || "Pcs"}
           </Badge>
         </div>
 
-        {/* Box 5: Price & HPP */}
-        <div className="flex lg:flex flex-col items-end gap-0.5 px-4 lg:px-0">
-          <p className="text-[0.625rem] font-black text-primary uppercase tracking-tighter">Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}</p>
-          <div className="flex items-center gap-1 opacity-40">
-            <TrendingUp className="w-2.5 h-2.5" />
-            <p className="text-[0.5625rem] font-bold">HPP: Rp {(product.cogs || 0).toLocaleString("id-ID")}</p>
-          </div>
+        {/* Box 5: Price */}
+        <div className="flex flex-col items-end lg:items-start">
+          <p className="text-[0.6875rem] lg:text-xs font-black text-primary tracking-tighter">{(product.sellingPrice || 0).toLocaleString("id-ID")}</p>
+          <p className="hidden lg:block text-[8px] font-bold opacity-40">HPP: {(product.cogs || 0).toLocaleString("id-ID")}</p>
         </div>
 
         {/* Box 6: Actions */}
-        <div className="flex lg:flex items-center justify-center lg:justify-end gap-2 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-none border-border/10">
-          <button 
-            onClick={() => onRestock(product)}
-            className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500/20 transition-all"
-            title="Restock"
-          >
-            <ArrowDownCircle className="w-4 h-4" />
-          </button>
+        <div className="flex items-center justify-end gap-1">
           <button 
             onClick={() => onEdit(product)}
-            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all"
+            className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-primary/10 transition-all"
           >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => onDelete(product.id)}
-            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-all"
-          >
-            <Trash2 className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
       </div>
@@ -156,10 +136,15 @@ export default function ProductsPage() {
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockData, setRestockData] = useState({ qty: 0, buyPrice: 0 });
   const [selectedCategory, setSelectedCategory] = useState("Semua");
+  const [showSuccess, setShowSuccess] = useState(false);
   
   const handleRestock = async () => {
     if (!restockProduct || restockData.qty <= 0) return;
     await processStockIn(restockProduct.id, restockData.qty, restockData.buyPrice);
+    
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+    
     setIsRestockOpen(false);
     setRestockData({ qty: 0, buyPrice: 0 });
     setRestockProduct(null);
@@ -206,6 +191,15 @@ export default function ProductsPage() {
     if (isTransitioning.current) return;
     isTransitioning.current = true;
     try {
+      if (Capacitor.isNativePlatform()) {
+        const status = await Camera.requestPermissions({ permissions: ['camera'] });
+        if (status.camera !== 'granted') {
+          alert("Izin kamera diperlukan untuk scan barcode.");
+          setIsScannerOpen(false);
+          return;
+        }
+      }
+
       const scanner = new Html5Qrcode("product-barcode-reader");
       scannerRef.current = scanner;
       await scanner.start(
@@ -215,6 +209,7 @@ export default function ProductsPage() {
           qrbox: { width: 250, height: 150 },
         },
         (decodedText) => {
+          playBeep();
           setFormData(prev => ({ ...prev, barcode: decodedText }));
           setIsScannerOpen(false);
         },
@@ -384,7 +379,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Bento Table */}
-        <div className="space-y-1">
+        <div className="w-full">
           <ProductTableHeader />
           {filtered?.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-6 text-center">
@@ -457,7 +452,7 @@ export default function ProductsPage() {
                     <Input
                       type="number"
                       value={restockData.qty || ""}
-                      onChange={(e) => setRestockData({ ...restockData, qty: Number(e.target.value) })}
+                      onChange={(e) => setRestockData({ ...restockData, qty: e.target.value === "" ? 0 : Number(e.target.value) })}
                       placeholder="0"
                       className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-lg text-primary"
                     />
@@ -467,7 +462,7 @@ export default function ProductsPage() {
                     <Input
                       type="number"
                       value={restockData.buyPrice || ""}
-                      onChange={(e) => setRestockData({ ...restockData, buyPrice: Number(e.target.value) })}
+                      onChange={(e) => setRestockData({ ...restockData, buyPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
                       placeholder="0"
                       className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-lg text-emerald-600"
                     />
@@ -625,8 +620,8 @@ export default function ProductsPage() {
                     <Input
                       type="number"
                       className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      value={formData.cogs ?? ""}
-                      onChange={e => setFormData({ ...formData, cogs: Number(e.target.value) })}
+                      value={formData.cogs || ""}
+                      onChange={e => setFormData({ ...formData, cogs: e.target.value === "" ? 0 : Number(e.target.value) })}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -634,8 +629,8 @@ export default function ProductsPage() {
                     <Input
                       type="number"
                       className="h-12 px-4 rounded-xl bg-muted/30 border-none text-primary font-bold"
-                      value={formData.sellingPrice ?? ""}
-                      onChange={e => setFormData({ ...formData, sellingPrice: Number(e.target.value) })}
+                      value={formData.sellingPrice || ""}
+                      onChange={e => setFormData({ ...formData, sellingPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -643,8 +638,8 @@ export default function ProductsPage() {
                     <Input
                       type="number"
                       className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      value={formData.stock ?? ""}
-                      onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })}
+                      value={formData.stock || ""}
+                      onChange={e => setFormData({ ...formData, stock: e.target.value === "" ? 0 : Number(e.target.value) })}
                     />
                   </div>
                 </div>
@@ -671,6 +666,23 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
+      {/* Success Toast */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[500] px-6 py-3 bg-emerald-600 text-white rounded-2xl shadow-2xl shadow-emerald-500/20 flex items-center gap-3 border border-white/20 backdrop-blur-md"
+          >
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <p className="text-xs font-black uppercase tracking-widest">Stok Berhasil Ditambah!</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

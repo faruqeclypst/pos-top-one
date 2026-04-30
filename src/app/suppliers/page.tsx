@@ -5,7 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import db, { type Supplier } from "@/lib/db";
 import {
   Search, Plus, Edit2, Trash2, Building2, Phone, MapPin,
-  X, Info, CheckCircle2
+  X, Info, CheckCircle2, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
@@ -32,11 +32,11 @@ function SuppliersSkeleton() {
 // ── Bento Table Header ─────────────────────────────────────
 function SupplierTableHeader() {
   return (
-    <div className="hidden lg:grid grid-cols-[1fr_200px_1fr_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
-      <span>Nama Supplier</span>
+    <div className="grid grid-cols-[1fr_100px_40px] lg:grid-cols-[1fr_200px_1fr_120px] gap-2 lg:gap-4 px-3 lg:px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
+      <span>Supplier</span>
       <span>Kontak</span>
-      <span>Alamat</span>
-      <span className="text-right">Aksi</span>
+      <span className="hidden lg:block">Alamat</span>
+      <span className="text-right"></span>
     </div>
   );
 }
@@ -48,44 +48,38 @@ function SupplierBentoRow({ supplier, onEdit, onDelete }: {
   onDelete: (id: string) => void;
 }) {
   return (
-    <Card className="group p-4 lg:p-0 overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-3 rounded-2xl">
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_200px_1fr_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
+    <Card className="group overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-1.5 rounded-xl">
+      <div className="grid grid-cols-[1fr_100px_40px] lg:grid-cols-[1fr_200px_1fr_120px] items-center gap-2 lg:gap-4 h-14 lg:h-16 px-3 lg:px-4">
         {/* Box 1: Name */}
-        <div className="flex items-center gap-4 w-full min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-            <Building2 className="w-5 h-5" />
+        <div className="flex items-center gap-2 w-full min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Building2 className="w-3.5 h-3.5" />
           </div>
-          <div className="flex-1 min-w-0 text-center lg:text-left">
-            <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{supplier.name}</h3>
-            <p className="text-[0.625rem] font-black text-muted-foreground/40 uppercase tracking-widest mt-0.5">Supplier ID: #{supplier.id.slice(-4).toUpperCase()}</p>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-[0.6875rem] lg:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors leading-tight">{supplier.name}</h3>
+            <p className="text-[7px] lg:text-[8px] font-black text-muted-foreground/40 uppercase truncate">#{supplier.id.slice(-4).toUpperCase()}</p>
           </div>
         </div>
 
         {/* Box 2: Contact */}
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Phone className="w-3.5 h-3.5" />
-          <span className="text-xs font-bold">{supplier.contact || "-"}</span>
+        <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+          <Phone className="w-2.5 h-2.5 shrink-0" />
+          <span className="text-[10px] font-bold truncate">{supplier.contact || "-"}</span>
         </div>
 
-        {/* Box 3: Address */}
-        <div className="flex items-center gap-2 text-muted-foreground w-full lg:w-auto">
-          <MapPin className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-xs font-medium truncate">{supplier.address || "Tidak ada alamat"}</span>
+        {/* Box 3: Address (Hidden on Mobile) */}
+        <div className="hidden lg:flex items-center gap-2 text-muted-foreground w-full">
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span className="text-[10px] font-medium truncate">{supplier.address || "No Address"}</span>
         </div>
 
         {/* Box 4: Actions */}
-        <div className="flex items-center justify-center lg:justify-end gap-2 w-full lg:w-auto mt-2 lg:mt-0 pt-3 lg:pt-0 border-t lg:border-none border-border/10">
+        <div className="flex items-center justify-end">
           <button 
             onClick={() => onEdit(supplier)}
-            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all"
+            className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-primary/10 transition-all"
           >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => onDelete(supplier.id)}
-            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-all"
-          >
-            <Trash2 className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
       </div>
@@ -216,7 +210,7 @@ export default function SuppliersPage() {
         </div>
 
         {/* List */}
-        <div className="space-y-4">
+        <div className="w-full">
           <SupplierTableHeader />
           {filteredSuppliers?.length === 0 ? (
             <div className="py-20 text-center space-y-4 bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-border/50">

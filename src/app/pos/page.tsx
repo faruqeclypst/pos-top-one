@@ -8,9 +8,13 @@ import { Search, ScanLine, Plus, Package, Minus, X, ChevronRight,
   ShoppingBag, CheckCircle2, Bluetooth, CreditCard, Banknote, QrCode,
   Trash2, User, Save, Share2, Download, Printer, Phone, FileText, Info
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, playBeep } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { Html5Qrcode } from "html5-qrcode";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { Camera } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -192,6 +196,8 @@ export default function POSPage() {
   const [tableNumber, setTableNumber] = useState("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
+  const [cashTendered, setCashTendered] = useState<number>(0);
 
   const confirm = useConfirm();
 
@@ -211,6 +217,15 @@ export default function POSPage() {
 
   const startScanner = useCallback(async () => {
     try {
+      if (Capacitor.isNativePlatform()) {
+        const status = await Camera.requestPermissions({ permissions: ['camera'] });
+        if (status.camera !== 'granted') {
+          alert("Izin kamera diperlukan untuk scan barcode.");
+          setIsScannerOpen(false);
+          return;
+        }
+      }
+
       const scanner = new Html5Qrcode("barcode-reader");
       scannerRef.current = scanner;
 
@@ -221,8 +236,13 @@ export default function POSPage() {
           qrbox: { width: 250, height: 150 },
         },
         (decodedText) => {
+          const now = Date.now();
+          if (now - lastScanTimeRef.current < 1500) return; // Debounce 1.5s
+          
           const product = products?.find(p => p.sku === decodedText || p.id.toString() === decodedText || p.barcode === decodedText);
           if (product) {
+            lastScanTimeRef.current = now;
+            playBeep();
             addToCart(product);
             setIsScannerOpen(false);
           }
@@ -289,7 +309,9 @@ export default function POSPage() {
         status: "SETTLEMENT",
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
-        tableNumber: tableNumber || undefined
+        tableNumber: tableNumber || undefined,
+        cashTendered: paymentMethod === 'CASH' ? cashTendered : totalPrice,
+        cashChange: paymentMethod === 'CASH' ? Math.max(0, cashTendered - totalPrice) : 0
       });
       for (const item of cart) {
         await db.transactionItems.put({
@@ -700,6 +722,53 @@ export default function POSPage() {
               </div>
             </div>
 
+            {paymentMethod === "CASH" && (
+              <div className="space-y-3">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Nominal Uang</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1000, 2000, 5000, 10000, 20000, 50000, 100000].map(val => (
+                    <button
+                      key={val}
+                      onClick={() => setCashTendered(prev => prev + val)}
+                      className="h-10 rounded-xl border border-border bg-card text-[10px] font-bold hover:bg-muted active:scale-95 transition-all"
+                    >
+                      +{val >= 1000 ? `${val/1000}k` : val}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCashTendered(totalPrice)}
+                    className="h-10 rounded-xl border border-primary/20 bg-primary/5 text-primary text-[10px] font-bold hover:bg-primary/10 active:scale-95 transition-all"
+                  >
+                    Uang Pas
+                  </button>
+                </div>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
+                  <Input
+                    type="number"
+                    className="h-12 pl-10 pr-4 bg-muted/40 border-none rounded-xl font-black text-lg"
+                    placeholder="Masukkan nominal..."
+                    value={cashTendered || ""}
+                    onChange={e => setCashTendered(e.target.value === "" ? 0 : Number(e.target.value))}
+                  />
+                  {cashTendered > 0 && (
+                    <button 
+                      onClick={() => setCashTendered(0)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-muted flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {cashTendered >= totalPrice && (
+                  <div className="flex justify-between items-center px-2 py-1 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Kembalian</span>
+                    <span className="text-sm font-black text-emerald-600">Rp {(cashTendered - totalPrice).toLocaleString("id-ID")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="card-premium p-3 space-y-1.5">
               <p className="text-[0.625rem] font-bold text-muted-foreground uppercase tracking-widest mb-2">Ringkasan</p>
               {customerName && (
@@ -800,6 +869,18 @@ export default function POSPage() {
                     <span>Metode</span>
                     <span>{paymentMethod}</span>
                   </div>
+                  {paymentMethod === "CASH" && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", opacity: 0.7 }}>
+                        <span>Bayar</span>
+                        <span>{cashTendered.toLocaleString("id-ID")}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", opacity: 0.7, fontWeight: "bold" }}>
+                        <span>Kembali</span>
+                        <span>{(cashTendered - totalPrice).toLocaleString("id-ID")}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div style={{ borderBottom: "1px dashed #cccccc", margin: "12px 0" }} />
@@ -856,19 +937,35 @@ export default function POSPage() {
 
                   try {
                     const canvas = await html2canvas(receiptRef.current, { scale: 2, backgroundColor: "#ffffff" });
-                    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+                    
+                    if (Capacitor.isNativePlatform()) {
+                      const base64Data = canvas.toDataURL("image/png").split(",")[1];
+                      const fileName = `Struk-${lastTxId}.png`;
+                      
+                      const result = await Filesystem.writeFile({
+                        path: fileName,
+                        data: base64Data,
+                        directory: Directory.Cache,
+                      });
 
-                    // Check if browser supports sharing files
-                    if (blob && navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], 'struk.png', { type: 'image/png' })] })) {
-                      const file = new File([blob], `Struk-${lastTxId}.png`, { type: 'image/png' });
-                      await navigator.share({
-                        files: [file],
+                      await Share.share({
                         title: 'Struk Belanja',
-                        text: text
+                        text: text,
+                        url: result.uri,
+                        dialogTitle: 'Bagikan Struk',
                       });
                     } else {
-                      // Fallback to text-only WhatsApp if file share not supported
-                      window.open(`https://wa.me/${customerPhone || ""}?text=${encodeURIComponent(text)}`, "_blank");
+                      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+                      if (blob && navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], 'struk.png', { type: 'image/png' })] })) {
+                        const file = new File([blob], `Struk-${lastTxId}.png`, { type: 'image/png' });
+                        await navigator.share({
+                          files: [file],
+                          title: 'Struk Belanja',
+                          text: text
+                        });
+                      } else {
+                        window.open(`https://wa.me/${customerPhone || ""}?text=${encodeURIComponent(text)}`, "_blank");
+                      }
                     }
                   } catch (err) {
                     console.error("Share failed:", err);
@@ -886,6 +983,7 @@ export default function POSPage() {
                   setCustomerName("");
                   setCustomerPhone("");
                   setTableNumber("");
+                  setCashTendered(0);
                   setActiveBillId(null);
                 }}
                 className="h-11 rounded-xl gradient-primary text-white text-xs font-bold flex items-center justify-center gap-2 touchable shadow-lg"

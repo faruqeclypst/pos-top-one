@@ -19,6 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 
 const THEMES = [
   { id: "light", label: "Terang", icon: Sun, color: "text-amber-500 bg-amber-500/10" },
@@ -89,21 +92,78 @@ export default function SettingsPage() {
   
   const [newCat, setNewCat] = useState("");
 
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const base64ToBlob = (base64: string): Blob => {
+    const [header, data] = base64.split(",");
+    const mime = header.match(/:(.*?);/)?.[1];
+    const binary = atob(data);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+    return new Blob([array], { type: mime });
+  };
+
   const handleBackup = async () => {
     try {
+      const products = await db.products.toArray();
+      const storeProfile = await db.storeProfile.toArray();
+
+      // Convert blobs to base64
+      const productsWithBase64 = await Promise.all(products.map(async p => ({
+        ...p,
+        image: p.image ? await blobToBase64(p.image) : null
+      })));
+
+      const profileWithBase64 = await Promise.all(storeProfile.map(async p => ({
+        ...p,
+        logo: p.logo ? await blobToBase64(p.logo) : null
+      })));
+
       const data = {
-        timestamp: Date.now(), version: 1,
-        products: await db.products.toArray(),
+        timestamp: Date.now(),
+        version: 2,
+        storeProfile: profileWithBase64,
+        categories: await db.categories.toArray(),
+        products: productsWithBase64,
         suppliers: await db.suppliers.toArray(),
         transactions: await db.transactions.toArray(),
         transactionItems: await db.transactionItems.toArray(),
+        stockMutations: await db.stockMutations.toArray(),
+        hppHistory: await db.hppHistory.toArray(),
       };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `TokoKu-Backup-${new Date().toISOString().split("T")[0]}.json`;
-      a.click();
+
+      const jsonString = JSON.stringify(data);
+      const fileName = `TokoKu-Backup-${new Date().toISOString().split("T")[0]}.json`;
+
+      if (Capacitor.isNativePlatform()) {
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: jsonString,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+
+        await Share.share({
+          title: 'Backup Data TokoKu',
+          url: result.uri,
+          dialogTitle: 'Simpan File Backup',
+        });
+      } else {
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+      }
     } catch (e) {
+      console.error(e);
       alert("Gagal backup: " + e);
     }
   };
@@ -113,19 +173,69 @@ export default function SettingsPage() {
     if (!file) return;
     const isConfirmed = await confirm({
       title: "Restore Data?",
-      message: "Data saat ini akan diganti dengan data dari file backup. Lanjutkan?",
+      message: "Data saat ini akan diganti dengan data dari file backup. Seluruh data transaksi, produk, dan pengaturan akan diperbarui. Lanjutkan?",
       type: "warning"
     });
     if (!isConfirmed) return;
+    
     try {
-      const parsed = JSON.parse(await file.text());
-      if (parsed.products) await db.products.bulkPut(parsed.products);
-      if (parsed.suppliers) await db.suppliers.bulkPut(parsed.suppliers);
-      if (parsed.transactions) await db.transactions.bulkPut(parsed.transactions);
-      if (parsed.transactionItems) await db.transactionItems.bulkPut(parsed.transactionItems);
-      alert("Restore berhasil!");
-    } catch {
-      alert("File backup tidak valid.");
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      
+      // Validation
+      if (!parsed.products || !parsed.transactions) {
+        throw new Error("File backup tidak valid.");
+      }
+
+      await db.transaction( 'rw', [
+        db.storeProfile, db.categories, db.products, db.suppliers, 
+        db.transactions, db.transactionItems, db.stockMutations, db.hppHistory
+      ], async () => {
+        // Clear existing
+        await Promise.all([
+          db.storeProfile.clear(),
+          db.categories.clear(),
+          db.products.clear(),
+          db.suppliers.clear(),
+          db.transactions.clear(),
+          db.transactionItems.clear(),
+          db.stockMutations.clear(),
+          db.hppHistory.clear(),
+        ]);
+
+        // Restore with blob conversion
+        if (parsed.storeProfile) {
+          const profileWithBlobs = parsed.storeProfile.map((p: any) => ({
+            ...p,
+            logo: p.logo ? base64ToBlob(p.logo) : null
+          }));
+          await db.storeProfile.bulkAdd(profileWithBlobs);
+        }
+        
+        if (parsed.categories) await db.categories.bulkAdd(parsed.categories);
+        
+        if (parsed.products) {
+          const productsWithBlobs = parsed.products.map((p: any) => ({
+            ...p,
+            image: p.image ? base64ToBlob(p.image) : null
+          }));
+          await db.products.bulkAdd(productsWithBlobs);
+        }
+        
+        if (parsed.suppliers) await db.suppliers.bulkAdd(parsed.suppliers);
+        if (parsed.transactions) await db.transactions.bulkAdd(parsed.transactions);
+        if (parsed.transactionItems) await db.transactionItems.bulkAdd(parsed.transactionItems);
+        if (parsed.stockMutations) await db.stockMutations.bulkAdd(parsed.stockMutations);
+        if (parsed.hppHistory) await db.hppHistory.bulkAdd(parsed.hppHistory);
+      });
+
+      alert("Restore berhasil! Aplikasi akan memuat ulang.");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Gagal restore: " + (err instanceof Error ? err.message : "File tidak valid"));
+    } finally {
+      if (restoreRef.current) restoreRef.current.value = "";
     }
   };
 
@@ -238,7 +348,15 @@ export default function SettingsPage() {
                   ].map((t) => (
                     <button
                       key={t.id}
-                      onClick={() => saveProfile({ businessType: t.id as any })}
+                      onClick={async () => {
+                        if (profile?.businessType === t.id) return;
+                        const isConfirmed = await confirm({
+                          title: "Ganti Tipe Bisnis?",
+                          message: `Tampilan aplikasi akan disesuaikan untuk tipe ${t.label}. Semua data Anda tetap aman.`,
+                          type: "warning"
+                        });
+                        if (isConfirmed) saveProfile({ businessType: t.id as any });
+                      }}
                       className={cn(
                         "p-3 rounded-2xl border-2 transition-all text-center",
                         profile?.businessType === t.id 

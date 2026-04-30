@@ -14,6 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import CategoryBar from "@/components/CategoryBar";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 
 const RANGES = [
   { id: "today", label: "Hari Ini" },
@@ -120,22 +123,54 @@ export default function ReportsPage() {
     byMethod[t.paymentMethod] = (byMethod[t.paymentMethod] || 0) + t.total;
   });
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!transactions.length) return alert("Tidak ada data untuk diekspor");
     const csv = ["ID,Tanggal,Total,Metode,Status", ...transactions.map(t =>
       `${t.id},${new Date(t.date).toLocaleString("id-ID")},${t.total},${t.paymentMethod},${t.status}`
     )].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `Laporan-${range}-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
+
+    const fileName = `Laporan-${range}-${new Date().toISOString().split("T")[0]}.csv`;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: csv,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+
+        await Share.share({
+          title: 'Ekspor Laporan',
+          url: result.uri,
+          dialogTitle: 'Simpan atau Bagikan Laporan',
+        });
+      } catch (err) {
+        console.error("Export failed:", err);
+        alert("Gagal mengekspor laporan.");
+      }
+    } else {
+      const blob = new Blob([csv], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      a.click();
+    }
   };
 
-  const handleShareWA = () => {
+  const handleShareWA = async () => {
     const rangeName = RANGES.find(r => r.id === range)?.label;
     const msg = `*Laporan ${profile?.name || "TokoKu"}*\n_Periode: ${rangeName}_\n\n📊 Total Transaksi: *${totalTrx}*\n💰 Pendapatan: *Rp ${totalSales.toLocaleString("id-ID")}*\n📈 Rata-rata: *Rp ${Math.round(avgOrder).toLocaleString("id-ID")}*\n\nDikirim via TokoKu POS ✅`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    
+    if (Capacitor.isNativePlatform()) {
+      await Share.share({
+        title: 'Bagi Laporan',
+        text: msg,
+        dialogTitle: 'Bagikan via WhatsApp atau Aplikasi Lain',
+      });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    }
   };
 
   return (
