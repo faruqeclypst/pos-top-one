@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import { useLiveQuery } from "dexie-react-hooks";
 import db, { type Product, type Supplier, type Category } from "@/lib/db";
 import {
@@ -149,6 +150,55 @@ export default function ProductsPage() {
     unit: "Pcs",
     image: null as Blob | null
   });
+
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current = null;
+      } catch (err) {
+        console.error("Stop scanner failed:", err);
+      }
+    }
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    try {
+      // Small delay to ensure the div is mounted
+      setTimeout(async () => {
+        const scanner = new Html5Qrcode("product-barcode-reader");
+        scannerRef.current = scanner;
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+          },
+          (decodedText) => {
+            setFormData(prev => ({ ...prev, barcode: decodedText }));
+            setIsScannerOpen(false);
+          },
+          () => { }
+        );
+      }, 100);
+    } catch (err) {
+      console.error("Scanner failed:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isScannerOpen) {
+      startScanner();
+    } else {
+      stopScanner();
+    }
+    return () => { stopScanner(); };
+  }, [isScannerOpen, startScanner, stopScanner]);
 
   const filtered = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -354,7 +404,7 @@ export default function ProductsPage() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">SKU / Kode Barang</p>
                       <Input
@@ -365,14 +415,33 @@ export default function ProductsPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Satuan</p>
-                      <Input
-                        className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                        placeholder="Pcs, Kg, Box..."
-                        value={formData.unit ?? ""}
-                        onChange={e => setFormData({ ...formData, unit: e.target.value })}
-                      />
+                      <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Barcode (Opsional)</p>
+                      <div className="flex gap-2">
+                        <Input
+                          className="h-12 px-4 rounded-xl bg-muted/30 border-none flex-1"
+                          placeholder="Scan atau ketik..."
+                          value={formData.barcode ?? ""}
+                          onChange={e => setFormData({ ...formData, barcode: e.target.value })}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-12 w-12 rounded-xl bg-muted/30 border-none shrink-0"
+                          onClick={() => setIsScannerOpen(true)}
+                        >
+                          <ScanLine className="w-5 h-5" />
+                        </Button>
+                      </div>
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Satuan</p>
+                    <Input
+                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
+                      placeholder="Pcs, Kg, Box..."
+                      value={formData.unit ?? ""}
+                      onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
@@ -437,6 +506,24 @@ export default function ProductsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Scanner Overlay ── */}
+      {isScannerOpen && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-background rounded-3xl overflow-hidden relative shadow-2xl">
+            <div className="p-4 border-b border-border/50 flex items-center justify-between">
+              <h3 className="font-bold text-sm">Scan Barcode Produk</h3>
+              <Button variant="ghost" size="icon" onClick={() => setIsScannerOpen(false)} className="rounded-full h-8 w-8">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div id="product-barcode-reader" className="w-full aspect-square bg-black" />
+            <div className="p-6 text-center space-y-2">
+              <p className="text-xs font-bold text-foreground uppercase tracking-widest">Scanning...</p>
+              <p className="text-[10px] text-muted-foreground">Posisikan barcode di dalam kotak kamera</p>
             </div>
           </div>
         </div>

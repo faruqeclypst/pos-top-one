@@ -21,7 +21,7 @@ export interface Category {
 export interface Product {
   id: string; // Internal UUID
   sku: string; // Unique SKU
-  barcode: string;
+  barcode?: string;
   name: string;
   sellingPrice: number;
   cogs: number; // HPP (Weighted Average)
