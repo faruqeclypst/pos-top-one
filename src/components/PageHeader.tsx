@@ -25,7 +25,7 @@ export default function PageHeader({
   return (
     <header
       className={cn(
-        "z-[40] w-full transition-all duration-300",
+        "z-[40] w-full transition-all duration-300 pt-safe",
         sticky ? "sticky top-0 bg-background/80 backdrop-blur-xl border-b border-border/50" : "bg-transparent",
         className
       )}

@@ -20,7 +20,7 @@ export default function CategoryBar({ selectedCategory, onSelect, className }: C
         className={cn(
           "px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap border-none",
           selectedCategory === "All" 
-            ? "gradient-primary text-white shadow-lg shadow-primary/20" 
+            ? "gradient-primary text-white" 
             : "bg-muted/40 text-muted-foreground hover:bg-muted"
         )}
       >
@@ -33,7 +33,7 @@ export default function CategoryBar({ selectedCategory, onSelect, className }: C
           className={cn(
             "px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap border-none",
             selectedCategory === cat.name 
-              ? "gradient-primary text-white shadow-lg shadow-primary/20" 
+              ? "gradient-primary text-white" 
               : "bg-muted/40 text-muted-foreground hover:bg-muted"
           )}
         >

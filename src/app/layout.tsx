@@ -1,18 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AppShell from "@/components/AppShell";
+import { ConfirmProvider } from "@/hooks/useConfirm";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
+import { Inter } from "next/font/google";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -24,6 +20,14 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "TokoKu POS",
+  },
+  icons: {
+    icon: [
+      { url: "/logo-default.png" },
+      { url: "/logo-default.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/logo-default.png",
+    apple: "/logo-default.png",
   },
 };
 
@@ -50,12 +54,14 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={inter.variable}
     >
       <body>
         <ThemeProvider defaultTheme="light">
           <FontSizeProvider>
-            <AppShell>{children}</AppShell>
+            <ConfirmProvider>
+              <AppShell>{children}</AppShell>
+            </ConfirmProvider>
           </FontSizeProvider>
           <script
             dangerouslySetInnerHTML={{

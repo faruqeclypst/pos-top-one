@@ -11,12 +11,14 @@ import { cn } from "@/lib/utils";
 function AppSkeleton() {
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center" style={{ background: "hsl(240, 5%, 98%)" }}>
-      <div className="flex flex-col items-center gap-4">
-        {/* App icon placeholder */}
-        <div className="w-20 h-20 rounded-3xl shimmer" />
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-24 h-24 rounded-3xl overflow-hidden animate-pulse">
+          <img src="/logo-default.png" alt="Loading..." className="w-full h-full object-contain block dark:hidden" />
+          <img src="/logo-dark.png" alt="Loading..." className="w-full h-full object-contain hidden dark:block" />
+        </div>
         <div className="space-y-2 flex flex-col items-center">
-          <div className="w-36 h-4 rounded-full shimmer" />
-          <div className="w-24 h-3 rounded-full shimmer" />
+          <div className="w-36 h-2 rounded-full bg-primary/20" />
+          <div className="w-24 h-2 rounded-full bg-primary/10" />
         </div>
       </div>
     </div>

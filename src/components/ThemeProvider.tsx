@@ -7,7 +7,7 @@ export type AccentColor = "violet" | "blue" | "emerald" | "rose" | "amber";
 
 const ACCENTS: Record<AccentColor, { h: number; s: number; l: number; gh: number }> = {
   violet: { h: 250, s: 85, l: 55, gh: 270 },
-  blue: { h: 215, s: 85, l: 55, gh: 195 },
+  blue: { h: 220, s: 100, l: 50, gh: 200 },
   emerald: { h: 155, s: 85, l: 45, gh: 175 },
   rose: { h: 345, s: 85, l: 55, gh: 325 },
   amber: { h: 38, s: 95, l: 55, gh: 25 },
@@ -47,9 +47,9 @@ export function ThemeProvider({
 
   const [accent, setAccent] = useState<AccentColor>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem(accentKey) as AccentColor) || "violet";
+      return (localStorage.getItem(accentKey) as AccentColor) || "blue";
     }
-    return "violet";
+    return "blue";
   });
 
   useEffect(() => {

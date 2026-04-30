@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import ImageUploader from "@/components/ImageUploader";
 import PageHeader from "@/components/PageHeader";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -129,6 +130,7 @@ function ProductBentoRow({ product, onEdit, onDelete, supplierName }: {
 // ── Main Products Page ─────────────────────────────────────
 export default function ProductsPage() {
   const products = useLiveQuery(() => db.products.orderBy("name").toArray());
+  const confirm = useConfirm();
   const suppliers = useLiveQuery(() => db.suppliers.toArray());
   const categories = useLiveQuery(() => db.categories.toArray());
   
@@ -205,7 +207,12 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Hapus produk ini?")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Produk?",
+      message: "Produk ini akan dihapus permanen dari katalog. Lanjutkan?",
+      type: "danger"
+    });
+    if (isConfirmed) {
       await db.products.delete(id);
     }
   };

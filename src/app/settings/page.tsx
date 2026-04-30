@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useStoreProfile } from "@/hooks/useStoreProfile";
 import { useTheme } from "@/components/ThemeProvider";
 import { useFontSize } from "@/components/FontSizeProvider";
+import { useConfirm } from "@/hooks/useConfirm";
 import { 
   Store, Palette, Database, Download, Upload, Sun, Moon, 
   ChevronRight, Info, Trash2, RotateCcw, Tag, Plus, X, Globe, Bell,
@@ -79,6 +80,7 @@ export default function SettingsPage() {
   const { profile, saveProfile } = useStoreProfile();
   const { theme, setTheme, accent, setAccent } = useTheme();
   const { fontSize, setFontSize } = useFontSize();
+  const confirm = useConfirm();
   const restoreRef = useRef<HTMLInputElement>(null);
   const categories = useLiveQuery(() => db.categories.toArray());
   const products = useLiveQuery(() => db.products.count());
@@ -109,7 +111,12 @@ export default function SettingsPage() {
   const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!confirm("Data saat ini akan diganti. Lanjutkan?")) return;
+    const isConfirmed = await confirm({
+      title: "Restore Data?",
+      message: "Data saat ini akan diganti dengan data dari file backup. Lanjutkan?",
+      type: "warning"
+    });
+    if (!isConfirmed) return;
     try {
       const parsed = JSON.parse(await file.text());
       if (parsed.products) await db.products.bulkPut(parsed.products);
@@ -123,7 +130,12 @@ export default function SettingsPage() {
   };
 
   const handleResetOnboarding = async () => {
-    if (!confirm("Reset onboarding? Anda harus setup ulang toko.")) return;
+    const isConfirmed = await confirm({
+      title: "Reset Toko?",
+      message: "Semua data profil akan direset. Anda harus melakukan setup ulang toko.",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
     await saveProfile({ isOnboarded: false });
     window.location.reload();
   };
@@ -135,7 +147,12 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategory = async (id: number) => {
-    if (!confirm("Hapus kategori ini?")) return;
+    const isConfirmed = await confirm({
+      title: "Hapus Kategori?",
+      message: "Kategori ini akan dihapus permanen.",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
     await db.categories.delete(id);
   };
 
@@ -162,8 +179,9 @@ export default function SettingsPage() {
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 blur-[60px] rounded-full -mr-16 -mt-16" />
             
             <div className="relative z-10 flex items-center gap-6 w-full">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-                <Store className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-border shadow-sm overflow-hidden p-2">
+                <img src="/logo-default.png" alt="Logo" className="w-full h-full object-contain block dark:hidden" />
+                <img src="/logo-dark.png" alt="Logo" className="w-full h-full object-contain hidden dark:block" />
               </div>
               <div className="flex-1 min-w-0 space-y-2">
                 <div>

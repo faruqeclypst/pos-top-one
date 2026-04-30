@@ -5,24 +5,28 @@
   "start_url": "/pos",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f8f9fa",
-  "theme_color": "#6366f1",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/logo-default.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-default.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "categories": ["business", "finance"],
-  "screenshots": [
+  "shortcuts": [
     {
-      "src": "/icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "TokoKu POS Desktop"
+      "name": "Kasir",
+      "url": "/pos",
+      "icons": [{ "src": "/logo-default.png", "sizes": "192x192" }]
     }
   ]
 }

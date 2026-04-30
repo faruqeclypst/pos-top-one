@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/hooks/useConfirm";
 
 import CategoryBar from "@/components/CategoryBar";
 
@@ -192,23 +193,7 @@ export default function POSPage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  const [confirmConfig, setConfirmConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    type: "danger" | "warning" | "info";
-  }>({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
-    type: "info"
-  });
-
-  const askConfirm = (title: string, message: string, onConfirm: () => void, type: any = "danger") => {
-    setConfirmConfig({ isOpen: true, title, message, onConfirm, type });
-  };
+  const confirm = useConfirm();
 
   // ── Scanner Logic ─────────────────────────────────────────
   const stopScanner = useCallback(async () => {
@@ -396,37 +381,39 @@ export default function POSPage() {
   };
 
   const handleDeleteBill = async (id: string) => {
-    askConfirm(
-      "Hapus Bill?",
-      "Bill ini akan dihapus secara permanen dari daftar draft.",
-      async () => {
-        await db.transactions.delete(id);
-        await db.transactionItems.where("transactionId").equals(id).delete();
-        if (activeBillId === id) setActiveBillId(null);
-      }
-    );
+    const isConfirmed = await confirm({
+      title: "Hapus Bill?",
+      message: "Bill ini akan dihapus secara permanen dari daftar draft.",
+      type: "danger"
+    });
+    if (isConfirmed) {
+      await db.transactions.delete(id);
+      await db.transactionItems.where("transactionId").equals(id).delete();
+      if (activeBillId === id) setActiveBillId(null);
+    }
   };
 
-  const handleClearCart = () => {
+  const handleClearCart = async () => {
     if (cart.length === 0) return;
-    askConfirm(
-      "Kosongkan Keranjang?",
-      "Semua barang yang sudah dipilih akan dihapus dari daftar pesanan.",
-      () => {
-        setCart([]);
-        setCustomerName("");
-        setCustomerPhone("");
-        setTableNumber("");
-        setActiveBillId(null);
-      }
-    );
+    const isConfirmed = await confirm({
+      title: "Kosongkan Keranjang?",
+      message: "Semua barang yang sudah dipilih akan dihapus dari daftar pesanan.",
+      type: "danger"
+    });
+    if (isConfirmed) {
+      setCart([]);
+      setCustomerName("");
+      setCustomerPhone("");
+      setTableNumber("");
+      setActiveBillId(null);
+    }
   };
 
   if (!products) return <POSSkeleton />;
 
   return (
     <div className="h-screen bg-background overflow-hidden flex flex-col animate-in fade-in duration-500">
-      <div className="flex-1 flex flex-col lg:flex-row relative overflow-hidden max-w-[1600px] mx-auto w-full">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-[1600px] mx-auto w-full">
         {/* ── Left Side: Products ── */}
         <div className="flex flex-col flex-1 min-w-0 h-full border-r border-border/50">
           <PageHeader
@@ -481,7 +468,7 @@ export default function POSPage() {
           </div>
 
           {/* Product Grid */}
-          <div className="flex-1 overflow-y-auto scroll-area px-5 py-6 pb-32 lg:pb-28">
+          <div className="flex-1 overflow-y-auto scroll-area px-5 py-6 pb-52 lg:pb-28">
             {filtered?.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
                   <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center">
@@ -598,7 +585,7 @@ export default function POSPage() {
       </div>
 
       {cart.length > 0 && !isCartOpen && (
-        <div className="fixed lg:hidden bottom-[82px] left-0 right-0 px-4 z-20">
+        <div className="fixed lg:hidden bottom-[130px] left-0 right-0 px-4 z-20 animate-in slide-in-from-bottom duration-300">
           <button
             onClick={() => setIsCartOpen(true)}
             className="w-full h-14 rounded-2xl gradient-primary flex items-center justify-between px-5 shadow-lg transition-all active:scale-[0.98]"
@@ -645,7 +632,7 @@ export default function POSPage() {
               {cart.map(item => <CartRow key={item.id} item={item} onUpdate={updateCartQty} />)}
             </div>
 
-            <div className="px-5 pt-4 pb-[88px] space-y-3 bg-background" style={{ borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+            <div className="px-5 pt-4 pb-[150px] space-y-3 bg-background" style={{ borderTop: "1px solid rgba(0,0,0,0.1)" }}>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground font-medium">Total Tagihan</span>
                 <span className="text-2xl font-bold text-foreground">Rp {totalPrice.toLocaleString("id-ID")}</span>
@@ -998,43 +985,6 @@ export default function POSPage() {
               <p className="text-[0.625rem] text-center text-muted-foreground leading-relaxed">
                 Bill tersimpan (draft) akan muncul di sini. Anda dapat melanjutkannya kapan saja sebelum diselesaikan.
               </p>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ── Custom Confirm Dialog ── */}
-      {confirmConfig.isOpen && (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-background w-full max-w-[320px] rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-8 text-center">
-              <div className={cn(
-                "w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-5",
-                confirmConfig.type === "danger" ? "bg-rose-50 text-rose-500" : "bg-primary/10 text-primary"
-              )}>
-                <Info className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">{confirmConfig.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{confirmConfig.message}</p>
-            </div>
-            <div className="flex border-t border-border/50">
-              <button 
-                onClick={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
-                className="flex-1 h-14 text-sm font-bold text-muted-foreground hover:bg-muted/30 transition-colors border-r border-border/50"
-              >
-                Batal
-              </button>
-              <button 
-                onClick={() => {
-                  confirmConfig.onConfirm();
-                  setConfirmConfig(prev => ({ ...prev, isOpen: false }));
-                }}
-                className={cn(
-                  "flex-1 h-14 text-sm font-bold transition-colors",
-                  confirmConfig.type === "danger" ? "text-rose-500 hover:bg-rose-50" : "text-primary hover:bg-primary/5"
-                )}
-              >
-                Ya, Lanjut
-              </button>
             </div>
           </div>
         </div>

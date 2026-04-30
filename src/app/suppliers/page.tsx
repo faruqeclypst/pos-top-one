@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -103,6 +104,7 @@ function SupplierBentoRow({ supplier, onEdit, onDelete }: {
 // ── Main Suppliers Page ───────────────────────────────────
 export default function SuppliersPage() {
   const suppliers = useLiveQuery(() => db.suppliers.toArray());
+  const confirm = useConfirm();
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -144,7 +146,12 @@ export default function SuppliersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Hapus pemasok ini? Semua produk terkait tetap ada tetapi tanpa relasi pemasok.")) {
+    const isConfirmed = await confirm({
+      title: "Hapus Pemasok?",
+      message: "Semua produk terkait tetap ada tetapi tanpa relasi pemasok. Lanjutkan?",
+      type: "danger"
+    });
+    if (isConfirmed) {
       await db.suppliers.delete(id);
     }
   };

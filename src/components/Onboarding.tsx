@@ -64,167 +64,88 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Gradient top bar */}
-      <div className="gradient-primary h-1.5" />
-
-      <div className="flex-1 flex flex-col max-w-md mx-auto w-full px-5">
-        {/* Step Indicator */}
-        <div className="flex items-center justify-center gap-2 pt-10 pb-6">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300",
-                step > s.id ? "bg-primary text-white" :
-                step === s.id ? "bg-primary text-white ring-4 ring-primary/20" :
-                "bg-muted text-muted-foreground"
-              )}>
-                {step > s.id ? <CheckCircle2 className="w-4 h-4" /> : s.id}
-              </div>
-              {i < STEPS.length - 1 && (
-                <div className={cn("w-8 h-0.5 rounded-full transition-all duration-500", step > s.id ? "bg-primary" : "bg-border")} />
-              )}
-            </div>
-          ))}
-        </div>
-
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-10 animate-in fade-in zoom-in-95 duration-500">
+        
         {/* Step 1: Store Info */}
         {step === 1 && (
-          <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-400">
-            <div className="mb-8">
-              <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center mb-4"
-                style={{ boxShadow: "0 8px 24px rgba(80, 70, 230, 0.3)" }}>
-                <HardDrive className="w-7 h-7 text-white" />
+          <div className="space-y-8 text-center">
+            <div className="space-y-4">
+              <div className="w-24 h-24 mx-auto overflow-hidden rounded-3xl">
+                <img src="/logo-default.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">Selamat Datang!</h1>
-              <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-                Mari kita siapkan toko Anda. Informasi ini akan tampil di struk dan laporan.
-              </p>
+              <h1 className="text-3xl font-black tracking-tight">Mulai TokoKu</h1>
             </div>
 
-            <div className="space-y-4 flex-1">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-1.5">
-                  Nama Toko *
-                </label>
-                <input
-                  className="w-full h-13 px-4 bg-muted/60 rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-primary/30 transition-all font-medium"
-                  style={{ height: "52px" }}
-                  placeholder="Contoh: Toko Berkah Jaya"
-                  value={formData.name}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-1.5">
-                  Alamat
-                </label>
-                <input
-                  className="w-full h-13 px-4 bg-muted/60 rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                  style={{ height: "52px" }}
-                  placeholder="Jalan, Kecamatan, Kota"
-                  value={formData.address}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, address: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-1.5">
-                  Nomor WhatsApp
-                </label>
-                <input
-                  type="tel"
-                  className="w-full h-13 px-4 bg-muted/60 rounded-xl text-sm border-0 outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                  style={{ height: "52px" }}
-                  placeholder="08xxxxxxxxxx"
-                  value={formData.phone}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
+            <div className="space-y-3">
+              <input
+                className="w-full h-14 px-6 bg-muted/40 rounded-2xl text-sm border border-transparent focus:border-primary/20 outline-none transition-all font-bold text-center"
+                placeholder="Nama Toko"
+                value={formData.name}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+              />
+              <input
+                className="w-full h-14 px-6 bg-muted/40 rounded-2xl text-sm border border-transparent focus:border-primary/20 outline-none transition-all text-center font-medium"
+                placeholder="Alamat (Opsional)"
+                value={formData.address}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, address: e.target.value })}
+              />
+              <input
+                type="tel"
+                className="w-full h-14 px-6 bg-muted/40 rounded-2xl text-sm border border-transparent focus:border-primary/20 outline-none transition-all text-center font-medium"
+                placeholder="WhatsApp (Opsional)"
+                value={formData.phone}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
+              />
             </div>
 
-            <div className="pt-8 pb-20">
-              <button
-                disabled={!formData.name}
-                onClick={() => setStep(2)}
-                className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
-                style={{ 
-                  boxShadow: formData.name ? "0 4px 20px rgba(80, 70, 230, 0.35)" : "none",
-                  marginBottom: "env(safe-area-inset-bottom, 24px)"
-                }}
-              >
-                Lanjutkan <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              disabled={!formData.name}
+              onClick={() => setStep(2)}
+              className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm disabled:opacity-30 transition-all active:scale-95"
+            >
+              LANJUTKAN
+            </button>
           </div>
         )}
 
         {/* Step 2: Dummy Data */}
         {step === 2 && (
-          <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-400">
-            <div className="mb-8">
-              <div className="w-14 h-14 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
-                <Sparkles className="w-7 h-7 text-violet-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">Data Percobaan</h1>
-              <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-                Ingin langsung coba semua fitur? Isi data contoh produk dan supplier secara otomatis.
-              </p>
+          <div className="space-y-8 text-center animate-in fade-in slide-in-from-right-4 duration-400">
+            <div className="space-y-3">
+              <h1 className="text-2xl font-black">Data Contoh</h1>
+              <p className="text-sm text-muted-foreground">Pilih jenis usaha Anda untuk mengisi data awal secara otomatis.</p>
             </div>
 
-            <div className="flex-1 space-y-4">
-              {/* Dummy Data Selection */}
-              <div className="grid grid-cols-1 gap-3">
-                {[
-                  { id: "fnb", title: "UMKM FnB (Kuliner)", desc: "Menu kopi, makanan berat, & snack", icon: "☕" },
-                  { id: "grocery", title: "UMKM Kelontong (Sembako)", desc: "Beras, telur, minyak, & tepung", icon: "🏠" },
-                ].map(type => (
-                  <button
-                    key={type.id}
-                    disabled={isInjecting || injected}
-                    onClick={() => handleInjectDummy(type.id as any)}
-                    className={cn(
-                      "flex items-center gap-4 p-5 rounded-2xl border-2 transition-all text-left",
-                      injected ? "opacity-50 grayscale pointer-events-none" : 
-                      "hover:bg-primary/5 active:scale-[0.98] border-border"
-                    )}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl">
-                      {type.icon}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-foreground">{type.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{type.desc}</p>
-                    </div>
-                    {injected && <CheckCircle2 className="w-5 h-5 text-primary" />}
-                  </button>
-                ))}
-              </div>
-
-              {injected && (
-                <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-primary/10 text-primary text-xs font-bold animate-in zoom-in-95">
-                  <CheckCircle2 className="w-4 h-4" /> Data berhasil ditambahkan!
-                </div>
-              )}
-
-              <p className="text-center text-[0.625rem] text-muted-foreground pt-2">
-                Pilih salah satu paket data untuk memulai dengan cepat.
-                <br />Data ini bisa dihapus atau diubah nantinya.
-              </p>
+            <div className="space-y-3">
+              {[
+                { id: "fnb", title: "UMKM FnB (Kuliner)", icon: "☕" },
+                { id: "grocery", title: "UMKM Kelontong", icon: "🏠" },
+              ].map(type => (
+                <button
+                  key={type.id}
+                  disabled={isInjecting || injected}
+                  onClick={() => handleInjectDummy(type.id as any)}
+                  className={cn(
+                    "w-full p-6 rounded-2xl border-2 transition-all flex items-center justify-between",
+                    injected ? "opacity-50 grayscale" : "hover:border-primary/30 active:scale-95 border-muted/30"
+                  )}
+                >
+                  <span className="font-bold">{type.title}</span>
+                  {injected ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <span className="text-xl">{type.icon}</span>}
+                </button>
+              ))}
             </div>
 
-            <div className="pt-4 pb-20 space-y-3">
+            <div className="space-y-3 pt-6">
               <button
                 onClick={() => setStep(3)}
-                className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                style={{ 
-                  boxShadow: "0 4px 20px rgba(80, 70, 230, 0.35)",
-                  marginBottom: "env(safe-area-inset-bottom, 0px)"
-                }}
+                className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm"
               >
-                Lanjutkan <ArrowRight className="w-5 h-5" />
+                LANJUTKAN
               </button>
-              <button onClick={() => setStep(1)} className="w-full h-11 rounded-2xl text-muted-foreground text-sm font-medium">
-                ← Kembali
+              <button onClick={() => setStep(1)} className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                KEMBALI
               </button>
             </div>
           </div>
@@ -232,62 +153,29 @@ export default function Onboarding() {
 
         {/* Step 3: Permissions */}
         {step === 3 && (
-          <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-400">
-            <div className="mb-8">
-              <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-7 h-7 text-amber-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">Izin Akses</h1>
-              <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-                Beberapa fitur membutuhkan izin perangkat. Anda bisa mengaktifkannya sekarang atau nanti.
-              </p>
+          <div className="space-y-8 text-center animate-in fade-in slide-in-from-right-4 duration-400">
+            <div className="space-y-3">
+              <h1 className="text-2xl font-black">Akses Perangkat</h1>
+              <p className="text-sm text-muted-foreground">Aplikasi membutuhkan izin berikut agar berjalan optimal.</p>
             </div>
 
-            <div className="flex-1 space-y-3">
-              {[
-                {
-                  icon: Camera, color: "bg-blue-50 text-blue-600",
-                  title: "Kamera", desc: "Scan barcode untuk input produk dan kasir yang lebih cepat"
-                },
-                {
-                  icon: Bluetooth, color: "bg-violet-50 text-violet-600",
-                  title: "Bluetooth", desc: "Cetak struk ke printer thermal tanpa kabel"
-                },
-                {
-                  icon: HardDrive, color: "bg-emerald-50 text-emerald-600",
-                  title: "Penyimpanan", desc: "Simpan backup database dan ekspor laporan ke perangkat"
-                },
-              ].map(item => (
-                <div key={item.title} className="card-premium p-4 flex items-start gap-4">
-                  <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", item.color)}>
-                    <item.icon className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground text-sm">{item.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
-                  </div>
+            <div className="space-y-2">
+              {["Kamera (Scan Barcode)", "Bluetooth (Print Struk)", "Penyimpanan (Data)"].map(item => (
+                <div key={item} className="p-4 rounded-xl bg-muted/30 text-sm font-bold text-foreground">
+                  {item}
                 </div>
               ))}
-
-              <p className="text-xs text-muted-foreground/70 text-center pt-2 px-4">
-                * Izin akan diminta secara otomatis saat fitur digunakan pertama kali di aplikasi Android
-              </p>
             </div>
 
-            <div className="pt-4 pb-20 space-y-3">
+            <div className="space-y-3 pt-6">
               <button
                 onClick={handleFinish}
-                className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                style={{ 
-                  boxShadow: "0 4px 20px rgba(80, 70, 230, 0.35)",
-                  marginBottom: "env(safe-area-inset-bottom, 0px)"
-                }}
+                className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm"
               >
-                <CheckCircle2 className="w-5 h-5" />
-                Mulai Gunakan TokoKu
+                MULAI SEKARANG
               </button>
-              <button onClick={() => setStep(2)} className="w-full h-11 rounded-2xl text-muted-foreground text-sm font-medium">
-                ← Kembali
+              <button onClick={() => setStep(2)} className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                KEMBALI
               </button>
             </div>
           </div>

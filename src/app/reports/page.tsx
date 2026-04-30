@@ -199,8 +199,8 @@ export default function ReportsPage() {
             
             <div className="relative z-10 space-y-6">
               <div className="flex items-center justify-between">
-                <div className="bg-white/20 backdrop-blur-md p-2.5 rounded-2xl">
-                  <TrendingUp className="w-6 h-6 text-white" />
+                <div className="bg-white/20 backdrop-blur-md p-1.5 rounded-2xl w-11 h-11 flex items-center justify-center overflow-hidden">
+                  <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <Badge className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md px-3 py-1 font-black text-[0.625rem] tracking-widest uppercase">
                   {RANGES.find(r => r.id === range)?.label}
