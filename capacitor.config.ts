@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.tokokupos.app',
-  appName: 'TokoKuPOS',
+  appName: 'TokoKu',
   webDir: 'out'
 };
 

@@ -13,13 +13,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TokoKu POS",
+  title: "TokoKu",
   description: "Point of Sale modern untuk UMKM Indonesia",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TokoKu POS",
+    title: "TokoKu",
   },
   icons: {
     icon: [
