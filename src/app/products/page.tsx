@@ -6,16 +6,21 @@ import { useLiveQuery } from "dexie-react-hooks";
 import db, { type Product, type Supplier, type Category } from "@/lib/db";
 import {
   Search, Plus, Edit2, Trash2, Package, ScanLine,
-  X, ChevronRight, Tag, Layers, ArrowUpDown, Info, Building2
+  X, ChevronRight, Tag, Layers, ArrowUpDown, Info, Building2,
+  ArrowDownCircle, History, TrendingUp, CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ImageUploader from "@/components/ImageUploader";
 import PageHeader from "@/components/PageHeader";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useStoreProfile } from "@/hooks/useStoreProfile";
+import { getTerminology } from "@/lib/terminology";
+import { processStockIn, calculateWeightedAverage } from "@/lib/inventory";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ── Skeleton ──────────────────────────────────────────────
 function ProductsSkeleton() {
@@ -34,21 +39,23 @@ function ProductsSkeleton() {
 // ── Bento Table Header ─────────────────────────────────────
 function ProductTableHeader() {
   return (
-    <div className="hidden lg:grid grid-cols-[80px_1fr_180px_160px_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
+    <div className="hidden lg:grid grid-cols-[80px_1fr_180px_160px_150px_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
       <span>Gambar</span>
       <span>Produk</span>
       <span>Kategori</span>
       <span>Stok</span>
-      <span className="text-right">Harga</span>
+      <span>Harga/HPP</span>
+      <span className="text-right">Aksi</span>
     </div>
   );
 }
 
 // ── Product Bento Row ─────────────────────────────────────
-function ProductBentoRow({ product, onEdit, onDelete, supplierName }: {
+function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }: {
   product: Product;
   onEdit: (p: Product) => void;
   onDelete: (id: string) => void;
+  onRestock: (p: Product) => void;
   supplierName?: string;
 }) {
   const [imageUrl] = useState(() => product.image ? URL.createObjectURL(product.image) : null);
@@ -56,7 +63,7 @@ function ProductBentoRow({ product, onEdit, onDelete, supplierName }: {
 
   return (
     <Card className="group p-4 lg:p-0 overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-3 rounded-2xl">
-      <div className="flex flex-col lg:grid lg:grid-cols-[80px_1fr_180px_160px_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
+      <div className="flex flex-col lg:grid lg:grid-cols-[80px_1fr_180px_160px_150px_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
         {/* Box 1: Image */}
         <div className="w-20 h-20 lg:w-14 lg:h-14 rounded-2xl bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-colors">
           {imageUrl ? (
@@ -95,33 +102,36 @@ function ProductBentoRow({ product, onEdit, onDelete, supplierName }: {
           </Badge>
         </div>
 
-        {/* Box 5: Price & Actions */}
-        <div className="flex lg:grid items-center justify-between lg:justify-end w-full lg:w-auto gap-4 px-4 lg:px-0 pb-2 lg:pb-0">
-          <div className="text-right lg:pr-2">
-            <span className="lg:hidden text-[0.625rem] font-black text-muted-foreground uppercase tracking-widest block mb-1">Harga</span>
-            <p className="text-base font-black text-primary tracking-tighter">
-              Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}
-            </p>
+        {/* Box 5: Price & HPP */}
+        <div className="flex lg:flex flex-col items-end gap-0.5 px-4 lg:px-0">
+          <p className="text-[0.625rem] font-black text-primary uppercase tracking-tighter">Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}</p>
+          <div className="flex items-center gap-1 opacity-40">
+            <TrendingUp className="w-2.5 h-2.5" />
+            <p className="text-[0.5625rem] font-bold">HPP: Rp {(product.cogs || 0).toLocaleString("id-ID")}</p>
           </div>
-          
-          <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 lg:translate-x-2 lg:group-hover:translate-x-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(product)}
-              className="w-9 h-9 rounded-xl hover:bg-blue-500/10 hover:text-blue-500"
-            >
-              <Edit2 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(product.id)}
-              className="w-9 h-9 rounded-xl hover:bg-rose-500/10 hover:text-rose-500"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+        </div>
+
+        {/* Box 6: Actions */}
+        <div className="flex lg:flex items-center justify-center lg:justify-end gap-2 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-none border-border/10">
+          <button 
+            onClick={() => onRestock(product)}
+            className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500/20 transition-all"
+            title="Restock"
+          >
+            <ArrowDownCircle className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onEdit(product)}
+            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onDelete(product.id)}
+            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-all"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </Card>
@@ -130,13 +140,32 @@ function ProductBentoRow({ product, onEdit, onDelete, supplierName }: {
 
 // ── Main Products Page ─────────────────────────────────────
 export default function ProductsPage() {
-  const products = useLiveQuery(() => db.products.orderBy("name").toArray());
+  const { profile } = useStoreProfile();
+  const terms = getTerminology(profile?.businessType);
   const confirm = useConfirm();
+  const products = useLiveQuery(() => db.products.orderBy("name").toArray());
   const suppliers = useLiveQuery(() => db.suppliers.toArray());
   const categories = useLiveQuery(() => db.categories.toArray());
   
-  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [isRestockOpen, setIsRestockOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [restockProduct, setRestockProduct] = useState<Product | null>(null);
+  const [restockData, setRestockData] = useState({ qty: 0, buyPrice: 0 });
+  const [selectedCategory, setSelectedCategory] = useState("Semua");
+  
+  const handleRestock = async () => {
+    if (!restockProduct || restockData.qty <= 0) return;
+    await processStockIn(restockProduct.id, restockData.qty, restockData.buyPrice);
+    setIsRestockOpen(false);
+    setRestockData({ qty: 0, buyPrice: 0 });
+    setRestockProduct(null);
+  };
+
+  const isTransitioning = useRef(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -151,43 +180,50 @@ export default function ProductsPage() {
     image: null as Blob | null
   });
 
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-
   const stopScanner = useCallback(async () => {
+    if (isTransitioning.current) return;
     if (scannerRef.current) {
+      isTransitioning.current = true;
       try {
-        if (scannerRef.current.isScanning) {
+        // Only stop if the state is actually SCANNING or PAUSED
+        const state = scannerRef.current.getState();
+        if (state === 2 || state === 3) { // 2 = SCANNING, 3 = PAUSED
           await scannerRef.current.stop();
         }
         scannerRef.current = null;
       } catch (err) {
-        console.error("Stop scanner failed:", err);
+        // Ignore "already under transition" errors as they are non-fatal in cleanup
+        if (!(err as string).toString().includes("transition")) {
+          console.error("Stop scanner failed:", err);
+        }
+      } finally {
+        isTransitioning.current = false;
       }
     }
   }, []);
 
   const startScanner = useCallback(async () => {
+    if (isTransitioning.current) return;
+    isTransitioning.current = true;
     try {
-      // Small delay to ensure the div is mounted
-      setTimeout(async () => {
-        const scanner = new Html5Qrcode("product-barcode-reader");
-        scannerRef.current = scanner;
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-          },
-          (decodedText) => {
-            setFormData(prev => ({ ...prev, barcode: decodedText }));
-            setIsScannerOpen(false);
-          },
-          () => { }
-        );
-      }, 100);
+      const scanner = new Html5Qrcode("product-barcode-reader");
+      scannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 150 },
+        },
+        (decodedText) => {
+          setFormData(prev => ({ ...prev, barcode: decodedText }));
+          setIsScannerOpen(false);
+        },
+        () => { }
+      );
     } catch (err) {
       console.error("Scanner failed:", err);
+    } finally {
+      isTransitioning.current = false;
     }
   }, []);
 
@@ -200,10 +236,13 @@ export default function ProductsPage() {
     return () => { stopScanner(); };
   }, [isScannerOpen, startScanner, stopScanner]);
 
-  const filtered = products?.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.sku || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products?.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (p.barcode && p.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === "Semua" || p.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   // Stats logic
   const totalStock = products?.reduce((acc, p) => acc + p.stock, 0) || 0;
@@ -272,18 +311,18 @@ export default function ProductsPage() {
   return (
     <div className="pb-32  min-h-screen bg-background">
       <PageHeader
-        title="Katalog Barang"
+        title={terms.inventory}
         subtitle="Manajemen Stok"
         actions={
           <div className="flex items-center gap-2">
             <div className="relative group hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary" />
-              <Input
-                className="h-10 w-64 pl-9 bg-muted/40 border-none rounded-xl text-sm"
-                placeholder="Cari barang..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+                <Input
+                  className="h-10 w-64 pl-9 bg-muted/40 border-none rounded-xl text-sm"
+                  placeholder={`Cari ${terms.product.toLowerCase()}...`}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
             </div>
             <Button
               onClick={() => handleOpenForm()}
@@ -297,38 +336,49 @@ export default function ProductsPage() {
       />
 
       <div className="w-full px-5 pt-8 mx-auto space-y-8 max-w-[1600px]">
+        {/* Mobile Search */}
+        <div className="relative group md:hidden">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
+          <Input
+            className="h-12 pl-12 bg-muted/40 border-none rounded-2xl text-sm"
+            placeholder={`Cari ${terms.product.toLowerCase()}...`}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+
         {/* Bento Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <Card className="p-6 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <Package className="w-16 h-16 text-blue-500" />
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <Card className="p-4 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+              <Package className="w-12 h-12 text-blue-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[0.625rem] font-black text-blue-600/60 uppercase tracking-[0.2em] mb-1">Total Produk</p>
-              <h3 className="text-3xl font-black text-blue-600 tracking-tight">{products.length}</h3>
-              <p className="text-[0.625rem] font-bold text-blue-600/40 mt-1">{totalStock} Total Item</p>
+              <p className="text-[8px] font-black text-blue-600/60 uppercase tracking-[0.2em] mb-1">Total Produk</p>
+              <h3 className="text-2xl font-black text-blue-600 tracking-tight">{products.length}</h3>
+              <p className="text-[8px] font-bold text-blue-600/40 mt-1">{totalStock} Item</p>
             </div>
           </Card>
 
-          <Card className="p-6 border-none shadow-sm bg-rose-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-rose-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <Info className="w-16 h-16 text-rose-500" />
+          <Card className="p-4 border-none shadow-sm bg-rose-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-rose-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+              <Info className="w-12 h-12 text-rose-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[0.625rem] font-black text-rose-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
-              <h3 className="text-3xl font-black text-rose-600 tracking-tight">{outOfStockCount}</h3>
-              <p className="text-[0.625rem] font-bold text-rose-600/40 mt-1">Perlu restok segera</p>
+              <p className="text-[8px] font-black text-rose-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
+              <h3 className="text-2xl font-black text-rose-600 tracking-tight">{outOfStockCount}</h3>
+              <p className="text-[8px] font-bold text-rose-600/40 mt-1">Perlu restok</p>
             </div>
           </Card>
 
-          <Card className="p-6 border-none shadow-sm bg-emerald-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-emerald-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <Tag className="w-16 h-16 text-emerald-500" />
+          <Card className="col-span-2 p-4 border-none shadow-sm bg-emerald-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-emerald-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+              <Tag className="w-12 h-12 text-emerald-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[0.625rem] font-black text-emerald-600/60 uppercase tracking-[0.2em] mb-1">Nilai Inventori</p>
-              <h3 className="text-2xl font-black text-emerald-600 tracking-tight">Rp {totalValue.toLocaleString("id-ID")}</h3>
-              <p className="text-[0.625rem] font-bold text-emerald-600/40 mt-1">Estimasi nilai jual</p>
+              <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-[0.2em] mb-1">Nilai Inventori</p>
+              <h3 className="text-xl font-black text-emerald-600 tracking-tight">Rp {totalValue.toLocaleString("id-ID")}</h3>
+              <p className="text-[8px] font-bold text-emerald-600/40 mt-1">Estimasi nilai jual</p>
             </div>
           </Card>
         </div>
@@ -356,12 +406,105 @@ export default function ProductsPage() {
                   supplierName={suppliers?.find(s => s.id === p.supplierId)?.name}
                   onEdit={handleOpenForm}
                   onDelete={handleDelete}
+                  onRestock={(prod) => {
+                    setRestockProduct(prod);
+                    setRestockData({ qty: 0, buyPrice: prod.cogs || 0 });
+                    setIsRestockOpen(true);
+                  }}
                 />
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* ── Restock Modal ── */}
+      <AnimatePresence>
+        {isRestockOpen && restockProduct && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsRestockOpen(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-border/50 flex items-center justify-between bg-emerald-500/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <ArrowDownCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-foreground uppercase tracking-tighter">Restock Barang</h2>
+                    <p className="text-[10px] font-bold text-muted-foreground truncate max-w-[150px]">{restockProduct.name}</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsRestockOpen(false)} className="w-8 h-8 rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Jumlah Masuk ({restockProduct.unit || "Pcs"})</label>
+                    <Input
+                      type="number"
+                      value={restockData.qty || ""}
+                      onChange={(e) => setRestockData({ ...restockData, qty: Number(e.target.value) })}
+                      placeholder="0"
+                      className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-lg text-primary"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Harga Beli per {restockProduct.unit || "Pcs"}</label>
+                    <Input
+                      type="number"
+                      value={restockData.buyPrice || ""}
+                      onChange={(e) => setRestockData({ ...restockData, buyPrice: Number(e.target.value) })}
+                      placeholder="0"
+                      className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-lg text-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-2">
+                  <div className="flex justify-between items-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    <span>HPP Saat Ini</span>
+                    <span className="text-foreground">Rp {(restockProduct.cogs || 0).toLocaleString("id-ID")}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-black text-primary uppercase tracking-widest pt-1 border-t border-primary/10">
+                    <span>Estimasi HPP Baru</span>
+                    <span>
+                      Rp {calculateWeightedAverage(
+                        restockProduct.stock,
+                        restockProduct.cogs || 0,
+                        restockData.qty,
+                        restockData.buyPrice
+                      ).toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleRestock}
+                  disabled={restockData.qty <= 0}
+                  className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                >
+                  Konfirmasi Restock
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Form Modal ── */}
       {isFormOpen && (

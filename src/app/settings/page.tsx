@@ -218,7 +218,7 @@ export default function SettingsPage() {
             <div className="bg-amber-500/5 hover:bg-amber-500/10 transition-colors p-4 rounded-2xl flex flex-col justify-center items-center text-center group">
               <Building2 className="w-5 h-5 text-amber-500 mb-2 opacity-40 group-hover:opacity-100 transition-opacity" />
               <h3 className="text-xl font-black text-amber-600 leading-none">{suppliers || 0}</h3>
-              <p className="text-[0.5625rem] font-bold text-amber-600/60 uppercase tracking-widest mt-2">Pemasok</p>
+              <p className="text-[0.5625rem] font-bold text-amber-600/60 uppercase tracking-widest mt-2">Supplier</p>
             </div>
           </Card>
         </div>
@@ -227,6 +227,55 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Column 1: Master Data */}
           <div className="space-y-6">
+            <SettingsSection title="Profil Bisnis" subtitle="Identitas & Tipe" icon={Store}>
+              <div className="p-4 space-y-4 border-b border-border/20">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Tipe Bisnis</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'FNB', label: 'FnB', desc: 'Menu' },
+                    { id: 'RETAIL', label: 'Toko', desc: 'Barang' },
+                    { id: 'GENERAL', label: 'Umum', desc: 'Produk' }
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => saveProfile({ businessType: t.id as any })}
+                      className={cn(
+                        "p-3 rounded-2xl border-2 transition-all text-center",
+                        profile?.businessType === t.id 
+                          ? "border-primary bg-primary/5 shadow-md" 
+                          : "border-border/50 bg-muted/20"
+                      )}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-tighter text-foreground">{t.label}</p>
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{t.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 space-y-4">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Informasi Toko</p>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-foreground uppercase ml-1">Nama Bisnis</p>
+                    <Input
+                      className="h-12 px-5 rounded-xl bg-muted/30 border-none font-bold"
+                      value={profile?.name || ""}
+                      onChange={(e) => saveProfile({ name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-foreground uppercase ml-1">Alamat</p>
+                    <textarea
+                      className="w-full min-h-[80px] p-4 rounded-xl bg-muted/30 border border-border/10 font-bold text-sm outline-none focus:ring-1 focus:ring-primary"
+                      value={profile?.address || ""}
+                      onChange={(e) => saveProfile({ address: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </SettingsSection>
+
             <SettingsSection title="Kategori Produk" subtitle="Master Data" icon={Tag}>
               <div className="p-5 space-y-5">
                 <div className="flex gap-2">
@@ -324,21 +373,6 @@ export default function SettingsPage() {
                       )}>
                         <div className={cn("w-full h-full rounded-lg", color.class)} />
                       </div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex gap-1.5 pt-4 border-t border-border/50">
-                  {["s", "m", "l", "xl"].map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setFontSize(size as any)}
-                      className={cn(
-                        "flex-1 h-9 rounded-lg font-black text-[0.625rem] transition-all",
-                        fontSize === size ? "bg-primary text-white" : "bg-muted/40 text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {size.toUpperCase()}
                     </button>
                   ))}
                 </div>

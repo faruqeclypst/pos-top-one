@@ -18,6 +18,7 @@ export function useStoreProfile() {
         phone: data.phone || '',
         theme: data.theme || 'default',
         isOnboarded: data.isOnboarded ?? false,
+        businessType: data.businessType || 'GENERAL',
         useTable: data.useTable ?? false,
         usePhoneNumber: data.usePhoneNumber ?? true,
         logo: data.logo || null,

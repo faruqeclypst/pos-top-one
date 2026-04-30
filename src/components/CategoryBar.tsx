@@ -16,10 +16,10 @@ export default function CategoryBar({ selectedCategory, onSelect, className }: C
   return (
     <div className={cn("flex gap-2 overflow-x-auto hide-scrollbar pb-1", className)}>
       <button
-        onClick={() => onSelect("All")}
+        onClick={() => onSelect("Semua")}
         className={cn(
           "px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap border-none",
-          selectedCategory === "All" 
+          selectedCategory === "Semua" 
             ? "gradient-primary text-white" 
             : "bg-muted/40 text-muted-foreground hover:bg-muted"
         )}

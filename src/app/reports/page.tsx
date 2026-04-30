@@ -209,8 +209,8 @@ export default function ReportsPage() {
               </div>
               
               <div>
-                <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em] mb-2">Total Pendapatan</p>
-                <h2 className="text-4xl sm:text-5xl font-black tracking-tighter">
+                <p className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Total Pendapatan</p>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter break-all">
                   Rp {totalSales.toLocaleString("id-ID")}
                 </h2>
               </div>
@@ -230,11 +230,11 @@ export default function ReportsPage() {
         </div>
 
         {/* Payment Methods */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-bottom-4 duration-300 delay-150 fill-mode-both">
+        <div className="grid grid-cols-2 gap-3">
           {Object.entries(byMethod).map(([method, amount]) => (
-            <Card key={method} className="p-4 border-none shadow-sm bg-card/40 backdrop-blur-sm flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={cn("p-2.5 rounded-xl", 
+            <Card key={method} className="p-3 border-none shadow-sm bg-card/40 backdrop-blur-sm flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={cn("p-2 rounded-lg", 
                   method === "CASH" ? "bg-emerald-500/10 text-emerald-500" :
                   method === "QRIS" ? "bg-blue-500/10 text-blue-500" : 
                   "bg-violet-500/10 text-violet-500"
@@ -242,8 +242,8 @@ export default function ReportsPage() {
                   {method === "CASH" ? <CreditCard className="w-4 h-4" /> : <BarChart3 className="w-4 h-4" />}
                 </div>
                 <div>
-                  <p className="text-[0.625rem] font-bold text-muted-foreground uppercase tracking-widest">{method}</p>
-                  <p className="text-sm font-black text-foreground">Rp {amount.toLocaleString("id-ID")}</p>
+                  <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">{method}</p>
+                  <p className="text-xs font-black text-foreground">Rp {amount.toLocaleString("id-ID")}</p>
                 </div>
               </div>
             </Card>

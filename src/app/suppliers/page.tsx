@@ -5,15 +5,17 @@ import { useLiveQuery } from "dexie-react-hooks";
 import db, { type Supplier } from "@/lib/db";
 import {
   Search, Plus, Edit2, Trash2, Building2, Phone, MapPin,
-  X, ChevronRight, ArrowUpDown, Info
+  X, Info, CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
 import { useConfirm } from "@/hooks/useConfirm";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useStoreProfile } from "@/hooks/useStoreProfile";
+import { getTerminology } from "@/lib/terminology";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ── Skeleton ──────────────────────────────────────────────
 function SuppliersSkeleton() {
@@ -30,9 +32,8 @@ function SuppliersSkeleton() {
 // ── Bento Table Header ─────────────────────────────────────
 function SupplierTableHeader() {
   return (
-    <div className="hidden lg:grid grid-cols-[80px_1fr_200px_1fr_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
-      <span>Profil</span>
-      <span>Nama Pemasok</span>
+    <div className="hidden lg:grid grid-cols-[1fr_200px_1fr_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
+      <span>Nama Supplier</span>
       <span>Kontak</span>
       <span>Alamat</span>
       <span className="text-right">Aksi</span>
@@ -48,53 +49,44 @@ function SupplierBentoRow({ supplier, onEdit, onDelete }: {
 }) {
   return (
     <Card className="group p-4 lg:p-0 overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-3 rounded-2xl">
-      <div className="flex flex-col lg:grid lg:grid-cols-[80px_1fr_200px_1fr_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
-        {/* Box 1: Profile Icon */}
-        <div className="w-16 h-16 lg:w-12 lg:h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-          <Building2 className="w-6 h-6" />
-        </div>
-
-        {/* Box 2: Name */}
-        <div className="flex-1 w-full min-w-0 text-center lg:text-left">
-          <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{supplier.name}</h3>
-          <p className="text-[0.625rem] text-muted-foreground font-medium uppercase tracking-tighter mt-0.5">ID: {supplier.id.slice(-6)}</p>
-        </div>
-
-        {/* Box 3: Contact */}
-        <div className="flex lg:flex flex-col w-full lg:w-auto items-center lg:items-start bg-muted/20 lg:bg-transparent rounded-xl p-3 lg:p-0">
-          <div className="flex items-center gap-2">
-            <Phone className="w-3.5 h-3.5 text-muted-foreground/60" />
-            <span className="text-xs font-bold text-foreground">{supplier.contact || "-"}</span>
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_200px_1fr_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
+        {/* Box 1: Name */}
+        <div className="flex items-center gap-4 w-full min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Building2 className="w-5 h-5" />
           </div>
-          <span className="lg:hidden text-[0.5625rem] font-black text-muted-foreground/40 uppercase tracking-widest mt-1">Telepon</span>
+          <div className="flex-1 min-w-0 text-center lg:text-left">
+            <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{supplier.name}</h3>
+            <p className="text-[0.625rem] font-black text-muted-foreground/40 uppercase tracking-widest mt-0.5">Supplier ID: #{supplier.id.slice(-4).toUpperCase()}</p>
+          </div>
         </div>
 
-        {/* Box 4: Address */}
-        <div className="hidden lg:flex items-center gap-2">
-          <MapPin className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-          <p className="text-[0.6875rem] text-muted-foreground line-clamp-2 leading-relaxed">
-            {supplier.address || "Tidak ada alamat"}
-          </p>
+        {/* Box 2: Contact */}
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Phone className="w-3.5 h-3.5" />
+          <span className="text-xs font-bold">{supplier.contact || "-"}</span>
         </div>
 
-        {/* Box 5: Actions */}
-        <div className="flex items-center justify-center lg:justify-end gap-1 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-none border-border/10">
-          <Button
-            variant="ghost"
-            size="icon"
+        {/* Box 3: Address */}
+        <div className="flex items-center gap-2 text-muted-foreground w-full lg:w-auto">
+          <MapPin className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-xs font-medium truncate">{supplier.address || "Tidak ada alamat"}</span>
+        </div>
+
+        {/* Box 4: Actions */}
+        <div className="flex items-center justify-center lg:justify-end gap-2 w-full lg:w-auto mt-2 lg:mt-0 pt-3 lg:pt-0 border-t lg:border-none border-border/10">
+          <button 
             onClick={() => onEdit(supplier)}
-            className="w-9 h-9 rounded-xl hover:bg-blue-500/10 hover:text-blue-500"
+            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all"
           >
             <Edit2 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
+          </button>
+          <button 
             onClick={() => onDelete(supplier.id)}
-            className="w-9 h-9 rounded-xl hover:bg-rose-500/10 hover:text-rose-500"
+            className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-all"
           >
             <Trash2 className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
       </div>
     </Card>
@@ -103,55 +95,57 @@ function SupplierBentoRow({ supplier, onEdit, onDelete }: {
 
 // ── Main Suppliers Page ───────────────────────────────────
 export default function SuppliersPage() {
-  const suppliers = useLiveQuery(() => db.suppliers.toArray());
+  const { profile } = useStoreProfile();
+  const terms = getTerminology(profile?.businessType);
   const confirm = useConfirm();
-  const [search, setSearch] = useState("");
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    contact: "",
-    address: ""
-  });
+  const suppliers = useLiveQuery(() => db.suppliers.toArray());
 
-  const filtered = suppliers?.filter(s => 
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    (s.contact || "").toLowerCase().includes(search.toLowerCase())
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ name: "", contact: "", address: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSuppliers = suppliers?.filter(s => 
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.contact || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleOpenForm = (s?: Supplier) => {
     if (s) {
       setEditingId(s.id);
-      setFormData({
-        name: s.name,
-        contact: s.contact || "",
-        address: s.address || ""
-      });
+      setFormData({ name: s.name, contact: s.contact, address: s.address });
     } else {
       setEditingId(null);
       setFormData({ name: "", contact: "", address: "" });
     }
-    setIsFormOpen(true);
+    setIsModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.name) return;
-    const data = { ...formData, updatedAt: Date.now() };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingId) {
-      await db.suppliers.update(editingId, data);
+      await db.suppliers.update(editingId, { ...formData });
     } else {
-      await db.suppliers.add({ ...data, id: `SUPP-${Date.now()}`, createdAt: Date.now() });
+      await db.suppliers.add({
+        id: `SUPP-${Date.now()}`,
+        ...formData,
+        createdAt: Date.now()
+      });
     }
-    setIsFormOpen(false);
+    setIsModalOpen(false);
+    setFormData({ name: "", contact: "", address: "" });
+    setEditingId(null);
   };
 
   const handleDelete = async (id: string) => {
-    const isConfirmed = await confirm({
-      title: "Hapus Pemasok?",
-      message: "Semua produk terkait tetap ada tetapi tanpa relasi pemasok. Lanjutkan?",
+    const ok = await confirm({
+      title: "Hapus Supplier?",
+      message: `Semua ${terms.product.toLowerCase()} terkait tetap ada tetapi tanpa relasi supplier. Lanjutkan?`,
+      confirmText: "Hapus",
+      cancelText: "Batal",
       type: "danger"
     });
-    if (isConfirmed) {
+    if (ok) {
       await db.suppliers.delete(id);
     }
   };
@@ -161,7 +155,7 @@ export default function SuppliersPage() {
   return (
     <div className="pb-32  min-h-screen bg-background">
       <PageHeader
-        title="Pemasok Barang"
+        title="Supplier Bisnis"
         subtitle="Daftar Mitra"
         actions={
           <div className="flex items-center gap-2">
@@ -169,9 +163,9 @@ export default function SuppliersPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary" />
               <Input
                 className="h-10 w-64 pl-9 bg-muted/40 border-none rounded-xl text-sm"
-                placeholder="Cari pemasok..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+                placeholder="Cari supplier..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
             <Button
@@ -191,131 +185,135 @@ export default function SuppliersPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
           <Input
             className="h-12 pl-12 bg-muted/40 border-none rounded-2xl text-sm"
-            placeholder="Cari pemasok..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            placeholder="Cari supplier..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
         {/* Bento Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <Card className="p-6 border-none shadow-sm bg-primary/5 backdrop-blur-sm relative overflow-hidden group hover:bg-primary/10 transition-colors">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <Building2 className="w-16 h-16 text-primary" />
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <Card className="p-4 border-none shadow-sm bg-primary/5 backdrop-blur-sm relative overflow-hidden group hover:bg-primary/10 transition-colors">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+              <Building2 className="w-12 h-12 text-primary" />
             </div>
             <div className="relative z-10">
-              <p className="text-[0.625rem] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Pemasok</p>
-              <h3 className="text-3xl font-black text-primary tracking-tight">{suppliers.length}</h3>
-              <p className="text-[0.625rem] font-bold text-primary/40 mt-1">Mitra bisnis aktif</p>
+              <p className="text-[8px] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Supplier</p>
+              <h3 className="text-2xl font-black text-primary tracking-tight">{suppliers.length}</h3>
+              <p className="text-[8px] font-bold text-primary/40 mt-1">Mitra aktif</p>
             </div>
           </Card>
 
-          <Card className="p-6 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <Phone className="w-16 h-16 text-blue-500" />
+          <Card className="p-4 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+              <Phone className="w-12 h-12 text-blue-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[0.625rem] font-black text-blue-600/60 uppercase tracking-[0.2em] mb-1">Kontak Tersedia</p>
-              <h3 className="text-3xl font-black text-blue-600 tracking-tight">
-                {suppliers.filter(s => !!s.contact).length}
-              </h3>
-              <p className="text-[0.625rem] font-bold text-blue-600/40 mt-1">Pemasok dengan nomor telepon</p>
+              <p className="text-[8px] font-black text-blue-500/60 uppercase tracking-[0.2em] mb-1">Kontak Mitra</p>
+              <h3 className="text-2xl font-black text-blue-500 tracking-tight">{suppliers.filter(s => s.contact).length}</h3>
+              <p className="text-[8px] font-bold text-blue-500/40 mt-1">Memiliki kontak</p>
             </div>
           </Card>
         </div>
 
-        {/* Bento Table */}
-        <div className="space-y-1">
+        {/* List */}
+        <div className="space-y-4">
           <SupplierTableHeader />
-          {filtered?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-6 text-center">
-              <div className="w-24 h-24 rounded-[3rem] bg-muted/30 flex items-center justify-center relative">
-                <Building2 className="w-12 h-12 text-muted-foreground/20" />
-                <div className="absolute inset-0 rounded-[3rem] border border-dashed border-muted-foreground/20 animate-pulse" />
+          {filteredSuppliers?.length === 0 ? (
+            <div className="py-20 text-center space-y-4 bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-border/50">
+              <div className="w-20 h-20 rounded-full bg-muted/40 flex items-center justify-center mx-auto mb-4">
+                <Search className="w-10 h-10 text-muted-foreground/20" />
               </div>
-              <p className="text-base font-black text-foreground uppercase tracking-widest">Pemasok Tidak Ditemukan</p>
+              <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Tidak Ditemukan</h3>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Coba kata kunci lain</p>
             </div>
           ) : (
-            filtered?.map((s, idx) => (
-              <div 
-                key={s.id} 
-                className=""
-                style={{ animationDelay: `${idx * 40}ms` }}
-              >
-                <SupplierBentoRow
-                  supplier={s}
-                  onEdit={handleOpenForm}
-                  onDelete={handleDelete}
-                />
-              </div>
+            filteredSuppliers?.map(s => (
+              <SupplierBentoRow
+                key={s.id}
+                supplier={s}
+                onEdit={handleOpenForm}
+                onDelete={handleDelete}
+              />
             ))
           )}
         </div>
       </div>
 
-      {/* ── Form Modal ── */}
-      {isFormOpen && (
-        <div className="fixed inset-0 z-[110] bg-background flex flex-col animate-in slide-in-from-bottom duration-300">
-          <div className="flex items-center justify-between px-5 pt-10 pb-4 border-b border-border/50 bg-background/95 sticky top-0 z-10 backdrop-blur-md">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => setIsFormOpen(false)} className="rounded-full">
-                <X className="w-5 h-5" />
-              </Button>
-              <h2 className="text-lg font-bold text-foreground">
-                {editingId ? "Ubah Detail Pemasok" : "Tambah Pemasok Baru"}
-              </h2>
-            </div>
-            <Button onClick={handleSave} className="h-10 rounded-xl gradient-primary text-white font-bold text-xs tracking-wider px-6">
-              SIMPAN
-            </Button>
-          </div>
+      {/* Modal Form */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-border/50 flex items-center justify-between bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-black text-foreground uppercase tracking-tighter">
+                    {editingId ? "Edit Supplier" : "Supplier Baru"}
+                  </h2>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-          <div className="flex-1 overflow-y-auto scroll-area px-5 py-6 space-y-8 max-w-2xl mx-auto w-full pb-32">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Informasi Pemasok</p>
+              <form onSubmit={handleSubmit} className="p-8 space-y-6">
                 <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Nama Perusahaan / Perorangan</p>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Nama Supplier</label>
                     <Input
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      placeholder="Contoh: PT Sumber Makmur"
+                      required
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Contoh: PT. Sumber Makmur"
+                      className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-bold"
                     />
                   </div>
-                  
-                  <div className="space-y-1.5">
-                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Nomor Telepon / WhatsApp</p>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Kontak / No. HP</label>
                     <Input
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      placeholder="08123456789"
                       value={formData.contact}
                       onChange={e => setFormData({ ...formData, contact: e.target.value })}
+                      placeholder="08xx xxxx xxxx"
+                      className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-bold"
                     />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Alamat Lengkap</p>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Alamat</label>
                     <textarea
-                      className="w-full h-32 px-4 py-3 bg-muted/30 rounded-xl text-sm border-none outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none shadow-inner-sm"
-                      placeholder="Jalan, Kecamatan, Kota..."
                       value={formData.address}
                       onChange={e => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="Alamat lengkap supplier..."
+                      className="w-full min-h-[100px] p-6 rounded-2xl bg-muted/30 border-none font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                 </div>
-              </div>
 
-              <Card className="bg-primary/5 border-none p-4 flex gap-3 rounded-2xl">
-                <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <p className="text-xs text-primary/80 leading-relaxed font-medium">
-                  Menambahkan informasi pemasok yang lengkap membantu Anda dalam mengelola rantai pasok dan mempermudah komunikasi saat melakukan restok barang.
-                </p>
-              </Card>
-            </div>
+                <button
+                  type="submit"
+                  className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                >
+                  {editingId ? "Simpan Perubahan" : "Tambah Supplier"}
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

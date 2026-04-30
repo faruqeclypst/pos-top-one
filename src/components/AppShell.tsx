@@ -6,6 +6,7 @@ import Onboarding from "./Onboarding";
 import BottomNav from "./BottomNav";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Premium app-level skeleton
 function AppSkeleton() {
@@ -46,7 +47,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
       <main className={cn("flex-1 overflow-y-auto scroll-area w-full", !isPOS && "pb-24")}>
-        {children}
+        <motion.div
+          key={pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          className="w-full h-full"
+        >
+          {children}
+        </motion.div>
       </main>
       <BottomNav />
     </div>

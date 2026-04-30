@@ -1,185 +1,155 @@
 "use client";
 
-import { useState, ChangeEvent } from "react";
+import { useState } from "react";
 import { useStoreProfile } from "@/hooks/useStoreProfile";
-import { Button } from "@/components/ui/button";
-import { Camera, Bluetooth, HardDrive, CheckCircle2, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
-import db from "@/lib/db";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-const DUMMY_FNB = [
-  { id: "F001", sku: "KOPI-AREN", barcode: "100001", name: "Kopi Susu Gula Aren", category: "Minuman", sellingPrice: 18000, cogs: 8000, stock: 50, unit: "Cup", createdAt: Date.now() },
-  { id: "F002", sku: "TEH-TARIK", barcode: "100002", name: "Teh Tarik Medan", category: "Minuman", sellingPrice: 12000, cogs: 5000, stock: 50, unit: "Cup", createdAt: Date.now() },
-  { id: "F003", sku: "NASGOR-SP", barcode: "100003", name: "Nasi Goreng Spesial", category: "Makanan", sellingPrice: 25000, cogs: 12000, stock: 100, unit: "Porsi", createdAt: Date.now() },
-  { id: "F004", sku: "MIE-AYAM", barcode: "100004", name: "Mie Ayam Bakso", category: "Makanan", sellingPrice: 20000, cogs: 10000, stock: 100, unit: "Porsi", createdAt: Date.now() },
-  { id: "F005", sku: "FRENCH-FRIES", barcode: "100005", name: "Kentang Goreng", category: "Camilan", sellingPrice: 15000, cogs: 7000, stock: 100, unit: "Porsi", createdAt: Date.now() },
-  { id: "F006", sku: "ES-JERUK", barcode: "100006", name: "Es Jeruk Peras", category: "Minuman", sellingPrice: 10000, cogs: 4000, stock: 50, unit: "Gelas", createdAt: Date.now() },
-];
-
-const DUMMY_GROCERY = [
-  { id: "G001", sku: "BERAS-5KG", barcode: "200001", name: "Beras Pandan Wangi 5Kg", category: "Sembako", sellingPrice: 75000, cogs: 68000, stock: 20, unit: "Pcs", createdAt: Date.now() },
-  { id: "G002", sku: "MINYAK-2L", barcode: "200002", name: "Minyak Goreng 2L", category: "Sembako", sellingPrice: 34000, cogs: 31000, stock: 15, unit: "Pcs", createdAt: Date.now() },
-  { id: "G003", sku: "TELUR-1KG", barcode: "200003", name: "Telur Ayam 1Kg", category: "Sembako", sellingPrice: 28000, cogs: 24000, stock: 30, unit: "Kg", createdAt: Date.now() },
-  { id: "G004", sku: "GULA-1KG", barcode: "200004", name: "Gula Pasir 1Kg", category: "Sembako", sellingPrice: 16000, cogs: 14500, stock: 25, unit: "Kg", createdAt: Date.now() },
-  { id: "G005", sku: "TEPUNG-1KG", barcode: "200005", name: "Tepung Terigu 1Kg", category: "Bahan Pokok", sellingPrice: 12000, cogs: 10500, stock: 20, unit: "Kg", createdAt: Date.now() },
-  { id: "G006", sku: "INDOMIE-G", barcode: "200006", name: "Indomie Goreng (DUS)", category: "Mie Instan", sellingPrice: 115000, cogs: 108000, stock: 10, unit: "Dus", createdAt: Date.now() },
-];
-
-const STEPS = [
-  { id: 1, title: "Profil Toko", desc: "Informasi dasar bisnis Anda" },
-  { id: 2, title: "Data Awal", desc: "Isi data percobaan (opsional)" },
-  { id: 3, title: "Izin Akses", desc: "Aktifkan fitur hardware" },
-];
+import { UtensilsCrossed, Store, Briefcase, CheckCircle2, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Onboarding() {
   const { saveProfile } = useStoreProfile();
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ name: "", address: "", phone: "" });
-  const [isInjecting, setIsInjecting] = useState(false);
-  const [injected, setInjected] = useState(false);
+  const [selectedType, setSelectedType] = useState<'FNB' | 'RETAIL' | 'GENERAL'>('GENERAL');
+  const [storeName, setStoreName] = useState("");
 
-  const handleInjectDummy = async (type: "fnb" | "grocery") => {
-    setIsInjecting(true);
-    try {
-      const data = type === "fnb" ? DUMMY_FNB : DUMMY_GROCERY;
-      await db.products.bulkPut(data);
-      
-      const categories = Array.from(new Set(data.map(d => d.category))).map(name => ({ name }));
-      await db.categories.bulkPut(categories);
+  const handleComplete = async () => {
+    await saveProfile({
+      name: storeName || (selectedType === 'FNB' ? "Resto Saya" : selectedType === 'RETAIL' ? "Toko Saya" : "Bisnis Saya"),
+      businessType: selectedType,
+      isOnboarded: true,
+    });
+    window.location.reload(); // Refresh to apply terminology everywhere
+  };
 
-      await db.suppliers.bulkPut([
-        { id: "S001", name: "Supplier Utama (Pusat)", contact: "08123456789", address: "Kota Terdekat", createdAt: Date.now() },
-        { id: "S002", name: "Grosir Berkah Mandiri", contact: "08567891234", address: "Pasar Induk", createdAt: Date.now() },
-      ]);
-      setInjected(true);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsInjecting(false);
+  const types = [
+    {
+      id: 'FNB',
+      label: 'F&B (Kuliner)',
+      desc: 'Restoran, Kafe, atau Warung Makan. Fokus ke Menu & Meja.',
+      icon: UtensilsCrossed,
+      color: 'text-orange-500',
+      bg: 'bg-orange-500/10'
+    },
+    {
+      id: 'RETAIL',
+      label: 'Toko (Retail)',
+      desc: 'Minimarket, Butik, atau Toko Kelontong. Fokus ke Barang & Stok.',
+      icon: Store,
+      color: 'text-blue-500',
+      bg: 'bg-blue-500/10'
+    },
+    {
+      id: 'GENERAL',
+      label: 'Umum (Jasa/Lainnya)',
+      desc: 'Laundry, Bengkel, atau Jasa lainnya. Fokus ke Produk & Layanan.',
+      icon: Briefcase,
+      color: 'text-violet-500',
+      bg: 'bg-violet-500/10'
     }
-  };
-
-  const handleFinish = async () => {
-    await saveProfile({ ...formData, theme: "light", isOnboarded: true, useTable: false, usePhoneNumber: true });
-  };
+  ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-10 animate-in fade-in zoom-in-95 duration-500">
+    <div className="fixed inset-0 z-[200] bg-background flex items-center justify-center p-6 overflow-y-auto">
+      <div className="w-full max-w-md space-y-8">
         
-        {/* Step 1: Store Info */}
-        {step === 1 && (
-          <div className="space-y-8 text-center">
-            <div className="space-y-4">
-              <div className="w-24 h-24 mx-auto overflow-hidden rounded-3xl">
-                <img src="/logo-default.png" alt="Logo" className="w-full h-full object-contain" />
-              </div>
-              <h1 className="text-3xl font-black tracking-tight">Mulai TokoKu</h1>
+        <div className="text-center space-y-2">
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-20 h-20 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6"
+          >
+            <div className="w-12 h-12 bg-primary rounded-[1.5rem] shadow-lg shadow-primary/20 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-white" />
             </div>
+          </motion.div>
+          <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase">TokoKu POS</h1>
+          <p className="text-muted-foreground text-sm font-medium">Mari siapkan sistem sesuai kebutuhan bisnis Anda</p>
+        </div>
 
-            <div className="space-y-3">
-              <input
-                className="w-full h-14 px-6 bg-muted/40 rounded-2xl text-sm border border-transparent focus:border-primary/20 outline-none transition-all font-bold text-center"
-                placeholder="Nama Toko"
-                value={formData.name}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
-              />
-              <input
-                className="w-full h-14 px-6 bg-muted/40 rounded-2xl text-sm border border-transparent focus:border-primary/20 outline-none transition-all text-center font-medium"
-                placeholder="Alamat (Opsional)"
-                value={formData.address}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, address: e.target.value })}
-              />
-              <input
-                type="tel"
-                className="w-full h-14 px-6 bg-muted/40 rounded-2xl text-sm border border-transparent focus:border-primary/20 outline-none transition-all text-center font-medium"
-                placeholder="WhatsApp (Opsional)"
-                value={formData.phone}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-
-            <button
-              disabled={!formData.name}
-              onClick={() => setStep(2)}
-              className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm disabled:opacity-30 transition-all active:scale-95"
+        <AnimatePresence mode="wait">
+          {step === 1 ? (
+            <motion.div 
+              key="step1"
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -20, opacity: 0 }}
+              className="space-y-4"
             >
-              LANJUTKAN
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Dummy Data */}
-        {step === 2 && (
-          <div className="space-y-8 text-center animate-in fade-in slide-in-from-right-4 duration-400">
-            <div className="space-y-3">
-              <h1 className="text-2xl font-black">Data Contoh</h1>
-              <p className="text-sm text-muted-foreground">Pilih jenis usaha Anda untuk mengisi data awal secara otomatis.</p>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { id: "fnb", title: "UMKM FnB (Kuliner)", icon: "☕" },
-                { id: "grocery", title: "UMKM Kelontong", icon: "🏠" },
-              ].map(type => (
-                <button
-                  key={type.id}
-                  disabled={isInjecting || injected}
-                  onClick={() => handleInjectDummy(type.id as any)}
-                  className={cn(
-                    "w-full p-6 rounded-2xl border-2 transition-all flex items-center justify-between",
-                    injected ? "opacity-50 grayscale" : "hover:border-primary/30 active:scale-95 border-muted/30"
-                  )}
-                >
-                  <span className="font-bold">{type.title}</span>
-                  {injected ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <span className="text-xl">{type.icon}</span>}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-3 pt-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Pilih Tipe Bisnis</p>
+              <div className="grid grid-cols-1 gap-3">
+                {types.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedType(t.id as any)}
+                    className={cn(
+                      "p-5 rounded-3xl border-2 transition-all flex items-center gap-5 text-left group",
+                      selectedType === t.id 
+                        ? "border-primary bg-primary/5 shadow-md" 
+                        : "border-border/50 bg-card hover:border-primary/20"
+                    )}
+                  >
+                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", t.bg, t.color)}>
+                      <t.icon className="w-7 h-7" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-foreground text-base tracking-tight">{t.label}</p>
+                      <p className="text-xs text-muted-foreground leading-tight mt-1">{t.desc}</p>
+                    </div>
+                    {selectedType === t.id && (
+                      <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
               <button
-                onClick={() => setStep(3)}
-                className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm"
+                onClick={() => setStep(2)}
+                className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 mt-6 active:scale-95 transition-all"
               >
-                LANJUTKAN
+                Lanjut
+                <ArrowRight className="w-5 h-5" />
               </button>
-              <button onClick={() => setStep(1)} className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                KEMBALI
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Permissions */}
-        {step === 3 && (
-          <div className="space-y-8 text-center animate-in fade-in slide-in-from-right-4 duration-400">
-            <div className="space-y-3">
-              <h1 className="text-2xl font-black">Akses Perangkat</h1>
-              <p className="text-sm text-muted-foreground">Aplikasi membutuhkan izin berikut agar berjalan optimal.</p>
-            </div>
-
-            <div className="space-y-2">
-              {["Kamera (Scan Barcode)", "Bluetooth (Print Struk)", "Penyimpanan (Data)"].map(item => (
-                <div key={item} className="p-4 rounded-xl bg-muted/30 text-sm font-bold text-foreground">
-                  {item}
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="step2"
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -20, opacity: 0 }}
+              className="space-y-6 bg-card border border-border/50 p-8 rounded-[2.5rem] shadow-sm"
+            >
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Detail Bisnis</p>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-foreground uppercase ml-1">Nama Toko / Resto</label>
+                  <input
+                    type="text"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    placeholder={selectedType === 'FNB' ? "Contoh: Warung Enak" : "Contoh: Toko Berkah"}
+                    className="w-full h-14 px-6 rounded-2xl bg-muted/30 border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold text-foreground"
+                  />
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="space-y-3 pt-6">
-              <button
-                onClick={handleFinish}
-                className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm"
-              >
-                MULAI SEKARANG
-              </button>
-              <button onClick={() => setStep(2)} className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                KEMBALI
-              </button>
-            </div>
-          </div>
-        )}
+              <div className="pt-4 space-y-3">
+                <button
+                  onClick={handleComplete}
+                  className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                >
+                  Mulai Sekarang
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setStep(1)}
+                  className="w-full h-14 bg-muted/50 text-muted-foreground rounded-[2rem] font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
+                >
+                  Kembali
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

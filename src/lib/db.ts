@@ -9,6 +9,7 @@ export interface StoreProfile {
   accentColor?: string; // e.g. "violet", "blue", "emerald", "rose", "amber"
   logo?: Blob | null;
   isOnboarded: boolean;
+  businessType: 'FNB' | 'RETAIL' | 'GENERAL';
   useTable: boolean;
   usePhoneNumber: boolean;
 }
