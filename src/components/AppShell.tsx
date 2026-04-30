@@ -4,6 +4,8 @@ import { useStoreProfile } from "@/hooks/useStoreProfile";
 import { useEffect, useState } from "react";
 import Onboarding from "./Onboarding";
 import BottomNav from "./BottomNav";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 // Premium app-level skeleton
 function AppSkeleton() {
@@ -24,6 +26,8 @@ function AppSkeleton() {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, isLoading } = useStoreProfile();
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const isPOS = pathname === "/pos";
 
   useEffect(() => {
     setMounted(true);
@@ -39,7 +43,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
-      <main className="flex-1 overflow-y-auto scroll-area w-full pb-16">
+      <main className={cn("flex-1 overflow-y-auto scroll-area w-full", !isPOS && "pb-24")}>
         {children}
       </main>
       <BottomNav />

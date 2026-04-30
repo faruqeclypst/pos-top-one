@@ -6,6 +6,7 @@ export interface StoreProfile {
   address: string;
   phone: string;
   theme: string;
+  accentColor?: string; // e.g. "violet", "blue", "emerald", "rose", "amber"
   logo?: Blob | null;
   isOnboarded: boolean;
   useTable: boolean;
@@ -15,8 +16,6 @@ export interface StoreProfile {
 export interface Category {
   id?: number;
   name: string;
-  color: string;
-  icon: string;
 }
 
 export interface Product {

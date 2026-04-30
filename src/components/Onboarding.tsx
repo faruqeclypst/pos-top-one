@@ -7,13 +7,22 @@ import { Camera, Bluetooth, HardDrive, CheckCircle2, ChevronRight, ArrowRight, S
 import db from "@/lib/db";
 import { cn } from "@/lib/utils";
 
-const DUMMY_PRODUCTS = [
-  { id: "P001", sku: "B-WANGI-5", barcode: "8991234567890", name: "Beras Pandan Wangi 5Kg", category: "Sembako", sellingPrice: 65000, cogs: 58000, stock: 20, unit: "Pcs", createdAt: Date.now() },
-  { id: "P002", sku: "BIMOLI-2L", barcode: "8991234567891", name: "Minyak Goreng Bimoli 2L", category: "Sembako", sellingPrice: 34000, cogs: 31000, stock: 15, unit: "Botol", createdAt: Date.now() },
-  { id: "P003", sku: "TELUR-1KG", barcode: "8991234567892", name: "Telur Ayam Negeri 1Kg", category: "Sembako", sellingPrice: 28000, cogs: 24000, stock: 30, unit: "Kg", createdAt: Date.now() },
-  { id: "P004", sku: "GULA-1KG", barcode: "8991234567893", name: "Gula Pasir 1Kg", category: "Sembako", sellingPrice: 14000, cogs: 12500, stock: 25, unit: "Kg", createdAt: Date.now() },
-  { id: "P005", sku: "TEH-SOSRO", barcode: "8991234567894", name: "Teh Botol Sosro 350ml", category: "Minuman", sellingPrice: 5000, cogs: 3500, stock: 48, unit: "Botol", createdAt: Date.now() },
-  { id: "P006", sku: "IND-GORENG", barcode: "8991234567895", name: "Indomie Goreng", category: "Sembako", sellingPrice: 3500, cogs: 2800, stock: 100, unit: "Bungkus", createdAt: Date.now() },
+const DUMMY_FNB = [
+  { id: "F001", sku: "KOPI-AREN", barcode: "100001", name: "Kopi Susu Gula Aren", category: "Minuman", sellingPrice: 18000, cogs: 8000, stock: 50, unit: "Cup", createdAt: Date.now() },
+  { id: "F002", sku: "TEH-TARIK", barcode: "100002", name: "Teh Tarik Medan", category: "Minuman", sellingPrice: 12000, cogs: 5000, stock: 50, unit: "Cup", createdAt: Date.now() },
+  { id: "F003", sku: "NASGOR-SP", barcode: "100003", name: "Nasi Goreng Spesial", category: "Makanan", sellingPrice: 25000, cogs: 12000, stock: 100, unit: "Porsi", createdAt: Date.now() },
+  { id: "F004", sku: "MIE-AYAM", barcode: "100004", name: "Mie Ayam Bakso", category: "Makanan", sellingPrice: 20000, cogs: 10000, stock: 100, unit: "Porsi", createdAt: Date.now() },
+  { id: "F005", sku: "FRENCH-FRIES", barcode: "100005", name: "Kentang Goreng", category: "Camilan", sellingPrice: 15000, cogs: 7000, stock: 100, unit: "Porsi", createdAt: Date.now() },
+  { id: "F006", sku: "ES-JERUK", barcode: "100006", name: "Es Jeruk Peras", category: "Minuman", sellingPrice: 10000, cogs: 4000, stock: 50, unit: "Gelas", createdAt: Date.now() },
+];
+
+const DUMMY_GROCERY = [
+  { id: "G001", sku: "BERAS-5KG", barcode: "200001", name: "Beras Pandan Wangi 5Kg", category: "Sembako", sellingPrice: 75000, cogs: 68000, stock: 20, unit: "Pcs", createdAt: Date.now() },
+  { id: "G002", sku: "MINYAK-2L", barcode: "200002", name: "Minyak Goreng 2L", category: "Sembako", sellingPrice: 34000, cogs: 31000, stock: 15, unit: "Pcs", createdAt: Date.now() },
+  { id: "G003", sku: "TELUR-1KG", barcode: "200003", name: "Telur Ayam 1Kg", category: "Sembako", sellingPrice: 28000, cogs: 24000, stock: 30, unit: "Kg", createdAt: Date.now() },
+  { id: "G004", sku: "GULA-1KG", barcode: "200004", name: "Gula Pasir 1Kg", category: "Sembako", sellingPrice: 16000, cogs: 14500, stock: 25, unit: "Kg", createdAt: Date.now() },
+  { id: "G005", sku: "TEPUNG-1KG", barcode: "200005", name: "Tepung Terigu 1Kg", category: "Bahan Pokok", sellingPrice: 12000, cogs: 10500, stock: 20, unit: "Kg", createdAt: Date.now() },
+  { id: "G006", sku: "INDOMIE-G", barcode: "200006", name: "Indomie Goreng (DUS)", category: "Mie Instan", sellingPrice: 115000, cogs: 108000, stock: 10, unit: "Dus", createdAt: Date.now() },
 ];
 
 const STEPS = [
@@ -29,13 +38,18 @@ export default function Onboarding() {
   const [isInjecting, setIsInjecting] = useState(false);
   const [injected, setInjected] = useState(false);
 
-  const handleInjectDummy = async () => {
+  const handleInjectDummy = async (type: "fnb" | "grocery") => {
     setIsInjecting(true);
     try {
-      await db.products.bulkPut(DUMMY_PRODUCTS);
+      const data = type === "fnb" ? DUMMY_FNB : DUMMY_GROCERY;
+      await db.products.bulkPut(data);
+      
+      const categories = Array.from(new Set(data.map(d => d.category))).map(name => ({ name }));
+      await db.categories.bulkPut(categories);
+
       await db.suppliers.bulkPut([
-        { id: "S001", name: "PT Indofood Sukses Makmur", contact: "08123456789", address: "Jakarta Pusat", createdAt: Date.now() },
-        { id: "S002", name: "CV Berkah Mandiri", contact: "08567891234", address: "Bandung", createdAt: Date.now() },
+        { id: "S001", name: "Supplier Utama (Pusat)", contact: "08123456789", address: "Kota Terdekat", createdAt: Date.now() },
+        { id: "S002", name: "Grosir Berkah Mandiri", contact: "08567891234", address: "Pasar Induk", createdAt: Date.now() },
       ]);
       setInjected(true);
     } catch (e) {
@@ -128,12 +142,15 @@ export default function Onboarding() {
               </div>
             </div>
 
-            <div className="pt-8 pb-10">
+            <div className="pt-8 pb-20">
               <button
                 disabled={!formData.name}
                 onClick={() => setStep(2)}
                 className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 transition-all active:scale-[0.98]"
-                style={{ boxShadow: formData.name ? "0 4px 20px rgba(80, 70, 230, 0.35)" : "none" }}
+                style={{ 
+                  boxShadow: formData.name ? "0 4px 20px rgba(80, 70, 230, 0.35)" : "none",
+                  marginBottom: "env(safe-area-inset-bottom, 24px)"
+                }}
               >
                 Lanjutkan <ArrowRight className="w-5 h-5" />
               </button>
@@ -155,52 +172,54 @@ export default function Onboarding() {
             </div>
 
             <div className="flex-1 space-y-4">
-              {/* Dummy Data Card */}
-              <div className={cn(
-                "rounded-2xl border-2 p-5 transition-all duration-300",
-                injected ? "border-primary bg-primary/5" : "border-border bg-card"
-              )}>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="font-semibold text-foreground">Paket Data Contoh</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">6 produk · 2 supplier · Data bisa dihapus kapan saja</p>
-                  </div>
-                  {injected && (
-                    <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />
-                  )}
-                </div>
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {["Sembako", "Minuman", "Snack"].map(cat => (
-                    <div key={cat} className="bg-muted/60 rounded-lg px-2 py-1.5 text-center">
-                      <p className="text-[10px] font-medium text-muted-foreground">{cat}</p>
-                    </div>
-                  ))}
-                </div>
-                {!injected ? (
+              {/* Dummy Data Selection */}
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { id: "fnb", title: "UMKM FnB (Kuliner)", desc: "Menu kopi, makanan berat, & snack", icon: "☕" },
+                  { id: "grocery", title: "UMKM Kelontong (Sembako)", desc: "Beras, telur, minyak, & tepung", icon: "🏠" },
+                ].map(type => (
                   <button
-                    onClick={handleInjectDummy}
-                    disabled={isInjecting}
-                    className="w-full h-11 rounded-xl bg-primary text-white text-sm font-semibold touchable disabled:opacity-50"
+                    key={type.id}
+                    disabled={isInjecting || injected}
+                    onClick={() => handleInjectDummy(type.id as any)}
+                    className={cn(
+                      "flex items-center gap-4 p-5 rounded-2xl border-2 transition-all text-left",
+                      injected ? "opacity-50 grayscale pointer-events-none" : 
+                      "hover:bg-primary/5 active:scale-[0.98] border-border"
+                    )}
                   >
-                    {isInjecting ? "Memuat data..." : "Tambahkan Data Contoh"}
+                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl">
+                      {type.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-foreground">{type.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{type.desc}</p>
+                    </div>
+                    {injected && <CheckCircle2 className="w-5 h-5 text-primary" />}
                   </button>
-                ) : (
-                  <div className="flex items-center justify-center gap-2 h-11 rounded-xl bg-primary/10 text-primary text-sm font-semibold">
-                    <CheckCircle2 className="w-4 h-4" /> Data berhasil ditambahkan!
-                  </div>
-                )}
+                ))}
               </div>
 
-              <p className="text-center text-xs text-muted-foreground">
-                atau lewati langkah ini dan mulai dengan data kosong
+              {injected && (
+                <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-primary/10 text-primary text-xs font-bold animate-in zoom-in-95">
+                  <CheckCircle2 className="w-4 h-4" /> Data berhasil ditambahkan!
+                </div>
+              )}
+
+              <p className="text-center text-[0.625rem] text-muted-foreground pt-2">
+                Pilih salah satu paket data untuk memulai dengan cepat.
+                <br />Data ini bisa dihapus atau diubah nantinya.
               </p>
             </div>
 
-            <div className="pt-4 pb-10 space-y-3">
+            <div className="pt-4 pb-20 space-y-3">
               <button
                 onClick={() => setStep(3)}
                 className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                style={{ boxShadow: "0 4px 20px rgba(80, 70, 230, 0.35)" }}
+                style={{ 
+                  boxShadow: "0 4px 20px rgba(80, 70, 230, 0.35)",
+                  marginBottom: "env(safe-area-inset-bottom, 0px)"
+                }}
               >
                 Lanjutkan <ArrowRight className="w-5 h-5" />
               </button>
@@ -255,11 +274,14 @@ export default function Onboarding() {
               </p>
             </div>
 
-            <div className="pt-4 pb-10 space-y-3">
+            <div className="pt-4 pb-20 space-y-3">
               <button
                 onClick={handleFinish}
                 className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                style={{ boxShadow: "0 4px 20px rgba(80, 70, 230, 0.35)" }}
+                style={{ 
+                  boxShadow: "0 4px 20px rgba(80, 70, 230, 0.35)",
+                  marginBottom: "env(safe-area-inset-bottom, 0px)"
+                }}
               >
                 <CheckCircle2 className="w-5 h-5" />
                 Mulai Gunakan TokoKu

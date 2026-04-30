@@ -39,6 +39,8 @@ export const viewport: Viewport = {
   ],
 };
 
+import { FontSizeProvider } from "@/components/FontSizeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,7 +54,20 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider defaultTheme="light">
-          <AppShell>{children}</AppShell>
+          <FontSizeProvider>
+            <AppShell>{children}</AppShell>
+          </FontSizeProvider>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js');
+                  });
+                }
+              `,
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>

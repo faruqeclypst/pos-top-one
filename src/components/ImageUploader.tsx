@@ -77,7 +77,7 @@ export default function ImageUploader({ initialBlob, onChange, maxWidth = 800 }:
       
       {preview ? (
         <div className="relative w-full h-52 bg-muted rounded-2xl overflow-hidden">
-          <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+          <img src={preview} alt="Preview" className="w-full h-full object-contain p-2" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           <button
             onClick={handleClear}

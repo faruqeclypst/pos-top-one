@@ -18,8 +18,11 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[100] pb-safe" style={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
-      <div className="flex h-16 max-w-md mx-auto sm:max-w-xl md:max-w-4xl justify-around items-center px-2">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-[100] pb-safe border-t border-border/40 bg-background/80 backdrop-blur-xl"
+      style={{ WebkitBackdropFilter: "blur(24px)" }}
+    >
+      <div className="flex h-20 max-w-lg mx-auto justify-around items-center px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/");
           return (
@@ -27,17 +30,23 @@ export default function BottomNav() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-200",
-                isActive ? "text-primary" : "text-muted-foreground"
+                "flex flex-col items-center justify-center w-full h-full gap-1.5 transition-all duration-300 relative group",
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
+              {isActive && (
+                <div className="absolute top-2 w-8 h-1 rounded-full bg-primary animate-in fade-in zoom-in duration-300" />
+              )}
               <div className={cn(
-                "flex items-center justify-center w-10 h-6 rounded-full transition-all duration-200",
-                isActive ? "bg-primary/12" : ""
+                "flex items-center justify-center w-12 h-8 rounded-2xl transition-all duration-300",
+                isActive ? "bg-primary/10" : "group-hover:bg-muted/50"
               )}>
-                <item.icon className={cn("transition-all duration-200", isActive ? "w-5 h-5 stroke-[2.5]" : "w-5 h-5 stroke-[1.75]")} />
+                <item.icon className={cn("transition-all duration-300", isActive ? "w-5.5 h-5.5 stroke-[2.5]" : "w-5.5 h-5.5 stroke-[1.5]")} />
               </div>
-              <span className={cn("text-[10px] font-medium transition-all duration-200", isActive ? "font-semibold" : "")}>
+              <span className={cn(
+                "text-[0.5625rem] uppercase tracking-widest font-black transition-all duration-300",
+                isActive ? "opacity-100 scale-100" : "opacity-60 scale-95"
+              )}>
                 {item.name}
               </span>
             </Link>

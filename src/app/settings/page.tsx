@@ -1,63 +1,91 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useStoreProfile } from "@/hooks/useStoreProfile";
 import { useTheme } from "@/components/ThemeProvider";
-import {
-  Store, Palette, Database, Download, Upload,
-  Sun, Moon, ChevronRight, Info, Trash2, RotateCcw
+import { useFontSize } from "@/components/FontSizeProvider";
+import { 
+  Store, Palette, Database, Download, Upload, Sun, Moon, 
+  ChevronRight, Info, Trash2, RotateCcw, Tag, Plus, X, Globe, Bell,
+  MapPin, Package, Building2, Type
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import db from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
+import PageHeader from "@/components/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 const THEMES = [
-  { id: "light", label: "Terang", icon: Sun, desc: "Mode siang hari" },
-  { id: "dark", label: "Gelap", icon: Moon, desc: "Mode malam" },
+  { id: "light", label: "Terang", icon: Sun, color: "text-amber-500 bg-amber-500/10" },
+  { id: "dark", label: "Gelap", icon: Moon, color: "text-indigo-400 bg-indigo-400/10" },
 ];
 
-function SettingsSection({ title, icon: Icon, children }: {
-  title: string; icon: React.ElementType; children: React.ReactNode;
+function SettingsSection({ title, subtitle, icon: Icon, children, className }: {
+  title: string; subtitle?: string; icon: any; children: React.ReactNode; className?: string;
 }) {
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-3", className)}>
       <div className="flex items-center gap-2 px-1">
-        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{title}</p>
+        <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground leading-none">{title}</h3>
+          {subtitle && <p className="text-[0.625rem] text-muted-foreground mt-1 uppercase tracking-widest">{subtitle}</p>}
+        </div>
       </div>
-      <div className="card-premium overflow-hidden">{children}</div>
+      <Card className="overflow-hidden border-none shadow-sm bg-card/60 backdrop-blur-sm">
+        {children}
+      </Card>
     </div>
   );
 }
 
-function SettingsRow({ label, desc, icon: Icon, iconColor, onClick, danger, last }: {
-  label: string; desc?: string; icon: React.ElementType;
-  iconColor: string; onClick?: () => void; danger?: boolean; last?: boolean;
+function SettingsRow({ label, desc, icon: Icon, iconColor, onClick, danger, children, last }: {
+  label: string; desc?: string; icon: any;
+  iconColor: string; onClick?: () => void; danger?: boolean; children?: React.ReactNode; last?: boolean;
 }) {
+  const Component = onClick ? "button" : "div";
   return (
-    <button
+    <Component
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-4 p-4 text-left touchable",
-        !last && "border-b border-border/50",
-        danger ? "hover:bg-red-50/50" : "hover:bg-muted/30"
+        "w-full flex items-center gap-4 p-4 text-left transition-colors",
+        onClick && "hover:bg-muted/30 active:scale-[0.99] touchable",
+        !last && "border-b border-border/20"
       )}
     >
       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", iconColor)}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn("text-sm font-semibold", danger ? "text-destructive" : "text-foreground")}>{label}</p>
-        {desc && <p className="text-xs text-muted-foreground mt-0.5 truncate">{desc}</p>}
+        <p className={cn("text-sm font-bold", danger ? "text-destructive" : "text-foreground")}>{label}</p>
+        {desc && <p className="text-[0.6875rem] text-muted-foreground mt-0.5 line-clamp-1">{desc}</p>}
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
-    </button>
+      {children ? (
+        <div className="shrink-0">{children}</div>
+      ) : (
+        onClick && <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0" />
+      )}
+    </Component>
   );
 }
 
 export default function SettingsPage() {
   const { profile, saveProfile } = useStoreProfile();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accent, setAccent } = useTheme();
+  const { fontSize, setFontSize } = useFontSize();
   const restoreRef = useRef<HTMLInputElement>(null);
+  const categories = useLiveQuery(() => db.categories.toArray());
+  const products = useLiveQuery(() => db.products.count());
+  const suppliers = useLiveQuery(() => db.suppliers.count());
+  const transactions = useLiveQuery(() => db.transactions.count());
+  
+  const [newCat, setNewCat] = useState("");
 
   const handleBackup = async () => {
     try {
@@ -100,152 +128,238 @@ export default function SettingsPage() {
     window.location.reload();
   };
 
-  return (
-    <div className="flex flex-col bg-background min-h-full pb-28">
-      <div className="max-w-4xl mx-auto w-full">
-        {/* Header */}
-        <div className="px-4 pt-5 pb-4">
-          <h1 className="text-lg font-bold text-foreground">Pengaturan</h1>
-        </div>
+  const handleAddCategory = async () => {
+    if (!newCat.trim()) return;
+    await db.categories.add({ name: newCat.trim() });
+    setNewCat("");
+  };
 
-        {/* Profile Card */}
-        <div className="px-4 mb-5">
-          <div className="gradient-primary rounded-3xl p-5 relative overflow-hidden">
-            <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/10 blur-xl" />
-            <div className="relative z-10 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-                <Store className="w-7 h-7 text-white" />
+  const handleDeleteCategory = async (id: number) => {
+    if (!confirm("Hapus kategori ini?")) return;
+    await db.categories.delete(id);
+  };
+
+  return (
+    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+      <PageHeader
+        title="Pengaturan"
+        subtitle="Konfigurasi"
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="h-8 border-primary/20 text-primary font-bold px-3">v1.0.0</Badge>
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+              <Palette className="w-5 h-5" />
+            </div>
+          </div>
+        }
+      />
+
+      <div className="w-full px-5 pt-8 mx-auto space-y-8 max-w-[1600px]">
+        {/* Top Bento Row: Profile & Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Profile Card (Compact Bento) */}
+          <Card className="lg:col-span-2 gradient-primary border-none p-6 relative overflow-hidden shadow-xl shadow-primary/10 text-white rounded-[2rem] group flex items-center min-h-[140px]">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 blur-[60px] rounded-full -mr-16 -mt-16" />
+            
+            <div className="relative z-10 flex items-center gap-6 w-full">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
+                <Store className="w-8 h-8 text-white" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-lg truncate">{profile?.name || "Nama Toko"}</p>
-                <p className="text-white/70 text-sm truncate">{profile?.address || "Belum ada alamat"}</p>
-                <p className="text-white/60 text-xs mt-1">{profile?.phone || "Belum ada telepon"}</p>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div>
+                  <h2 className="text-xl font-black tracking-tight">{profile?.name || "Nama Toko"}</h2>
+                  <div className="flex items-center gap-2 mt-1 opacity-80">
+                    <MapPin className="w-3 h-3" />
+                    <p className="text-[0.6875rem] font-medium line-clamp-1">{profile?.address || "Alamat belum diatur"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md px-3 py-1 font-bold text-[0.625rem] rounded-lg">
+                    {profile?.phone || "08xxxx"}
+                  </Badge>
+                  <Badge className="bg-black/10 text-white border-none backdrop-blur-md px-3 py-1 font-bold text-[0.625rem] rounded-lg uppercase tracking-widest">
+                    {profile?.isOnboarded ? "Aktif" : "Draft"}
+                  </Badge>
+                </div>
               </div>
             </div>
+          </Card>
+
+          {/* Quick Stats Bento (Grid 3 cols) */}
+          <Card className="lg:col-span-2 p-4 border-none shadow-sm bg-card/40 backdrop-blur-sm grid grid-cols-3 gap-3 rounded-[2rem]">
+            <div className="bg-blue-500/5 hover:bg-blue-500/10 transition-colors p-4 rounded-2xl flex flex-col justify-center items-center text-center group">
+              <Package className="w-5 h-5 text-blue-500 mb-2 opacity-40 group-hover:opacity-100 transition-opacity" />
+              <h3 className="text-xl font-black text-blue-600 leading-none">{products || 0}</h3>
+              <p className="text-[0.5625rem] font-bold text-blue-600/60 uppercase tracking-widest mt-2">Produk</p>
+            </div>
+            <div className="bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors p-4 rounded-2xl flex flex-col justify-center items-center text-center group">
+              <RotateCcw className="w-5 h-5 text-emerald-500 mb-2 opacity-40 group-hover:opacity-100 transition-opacity" />
+              <h3 className="text-xl font-black text-emerald-600 leading-none">{transactions || 0}</h3>
+              <p className="text-[0.5625rem] font-bold text-emerald-600/60 uppercase tracking-widest mt-2">Transaksi</p>
+            </div>
+            <div className="bg-amber-500/5 hover:bg-amber-500/10 transition-colors p-4 rounded-2xl flex flex-col justify-center items-center text-center group">
+              <Building2 className="w-5 h-5 text-amber-500 mb-2 opacity-40 group-hover:opacity-100 transition-opacity" />
+              <h3 className="text-xl font-black text-amber-600 leading-none">{suppliers || 0}</h3>
+              <p className="text-[0.5625rem] font-bold text-amber-600/60 uppercase tracking-widest mt-2">Pemasok</p>
+            </div>
+          </Card>
+        </div>
+
+        {/* Main Settings Bento Grid - Efficient 3-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* Column 1: Master Data */}
+          <div className="space-y-6">
+            <SettingsSection title="Kategori Produk" subtitle="Master Data" icon={Tag}>
+              <div className="p-5 space-y-5">
+                <div className="flex gap-2">
+                  <Input
+                    className="h-11 bg-muted/40 border-none rounded-xl px-4 text-sm"
+                    placeholder="Kategori baru..."
+                    value={newCat}
+                    onChange={e => setNewCat(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+                  />
+                  <Button onClick={handleAddCategory} size="icon" className="h-11 w-11 rounded-xl gradient-primary text-white shrink-0">
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto pr-1 scroll-area">
+                  {categories?.length === 0 && (
+                    <div className="w-full py-6 text-center bg-muted/20 rounded-xl border border-dashed border-border/50">
+                      <p className="text-[0.625rem] text-muted-foreground italic">Belum ada kategori</p>
+                    </div>
+                  )}
+                  {categories?.map(c => (
+                    <Badge 
+                      key={c.id} 
+                      variant="secondary" 
+                      className="px-3 py-1.5 rounded-xl gap-2 bg-muted/60 hover:bg-muted border-none transition-all"
+                    >
+                      <span className="text-[0.6875rem] font-bold text-foreground">{c.name}</span>
+                      <button onClick={() => c.id && handleDeleteCategory(c.id)} className="text-muted-foreground/40 hover:text-rose-500">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </SettingsSection>
+          </div>
+
+          {/* Column 2: Operations & Security */}
+          <div className="space-y-6">
+            <SettingsSection title="Fitur Bisnis" subtitle="Operasional" icon={Store}>
+              <div className="divide-y divide-border/10">
+                <SettingsRow label="Gunakan Nomor Meja" desc="Tampilkan pilihan meja" icon={Info} iconColor="bg-blue-500/10 text-blue-500">
+                  <Switch checked={profile?.useTable} onCheckedChange={checked => saveProfile({ useTable: checked })} />
+                </SettingsRow>
+                <SettingsRow label="Catat HP Pelanggan" desc="Simpan data pelanggan" icon={Globe} iconColor="bg-indigo-500/10 text-indigo-500" last>
+                  <Switch checked={profile?.usePhoneNumber} onCheckedChange={checked => saveProfile({ usePhoneNumber: checked })} />
+                </SettingsRow>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection title="Keamanan Data" subtitle="Manajemen File" icon={Database}>
+              <div className="divide-y divide-border/10">
+                <SettingsRow icon={Download} iconColor="bg-emerald-500/10 text-emerald-500" label="Ekspor Backup" desc="Simpan ke JSON" onClick={handleBackup} />
+                <input type="file" accept=".json" className="hidden" ref={restoreRef} onChange={handleRestore} />
+                <SettingsRow icon={Upload} iconColor="bg-amber-500/10 text-amber-500" label="Impor Data" desc="Restore dari backup" onClick={() => restoreRef.current?.click()} last />
+              </div>
+            </SettingsSection>
+          </div>
+
+          {/* Column 3: Personalization & System */}
+          <div className="space-y-6">
+            <SettingsSection title="Tampilan & Tema" subtitle="Personalisasi" icon={Palette}>
+              <div className="p-5 space-y-6">
+                <div className="grid grid-cols-2 gap-3">
+                  {THEMES.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id as any)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-2xl border-2 transition-all duration-200",
+                        theme === t.id ? "border-primary bg-primary/5" : "border-transparent bg-muted/40 hover:bg-muted"
+                      )}
+                    >
+                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", t.color)}>
+                        <t.icon className="w-4 h-4" />
+                      </div>
+                      <span className="text-[0.625rem] font-black uppercase tracking-widest">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-3 justify-between">
+                  {[
+                    { id: "violet", class: "bg-violet-500" },
+                    { id: "blue", class: "bg-blue-500" },
+                    { id: "emerald", class: "bg-emerald-500" },
+                    { id: "rose", class: "bg-rose-500" },
+                    { id: "amber", class: "bg-amber-500" },
+                  ].map((color) => (
+                    <button key={color.id} onClick={() => setAccent(color.id as any)} className="group touchable">
+                      <div className={cn(
+                        "w-9 h-9 rounded-xl transition-all duration-200 border-2",
+                        accent === color.id ? "border-primary scale-110 shadow-lg" : "border-transparent opacity-60"
+                      )}>
+                        <div className={cn("w-full h-full rounded-lg", color.class)} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-1.5 pt-4 border-t border-border/50">
+                  {["s", "m", "l", "xl"].map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setFontSize(size as any)}
+                      className={cn(
+                        "flex-1 h-9 rounded-lg font-black text-[0.625rem] transition-all",
+                        fontSize === size ? "bg-primary text-white" : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {size.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection title="Tindakan Berbahaya" subtitle="System" icon={Trash2}>
+              <SettingsRow icon={RotateCcw} iconColor="bg-rose-500/10 text-rose-500" label="Reset Toko" desc="Setup dari awal" onClick={handleResetOnboarding} danger last />
+            </SettingsSection>
           </div>
         </div>
 
-        <div className="px-4 space-y-5">
-          {/* Theme */}
-          <SettingsSection title="Tampilan" icon={Palette}>
-            <div className="p-4">
-              <p className="text-xs text-muted-foreground mb-3">Pilih tema warna aplikasi</p>
-              <div className="grid grid-cols-2 gap-3">
-                {THEMES.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTheme(t.id as "light" | "dark")}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-150",
-                      theme === t.id ? "border-primary bg-primary/5" : "border-border bg-background"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center",
-                      t.id === "light" ? "bg-amber-50 text-amber-600" : "bg-slate-700 text-slate-300"
-                    )}>
-                      <t.icon className="w-5 h-5" />
-                    </div>
-                    <span className={cn("text-xs font-semibold", theme === t.id ? "text-primary" : "text-foreground")}>
-                      {t.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </SettingsSection>
+        <div className="text-center space-y-4 pt-12 pb-12 opacity-50">
+          <div className="space-y-1">
+            <p className="text-[0.625rem] font-black uppercase tracking-[0.3em] text-foreground">TokoKu POS v1.0.0</p>
+            <p className="text-[0.8125rem] font-bold text-muted-foreground">
+              Dibuat oleh <span className="text-primary">Alfaruq Asri</span> • 
+              <a 
+                href="https://wa.me/6285359907696?text=Hai%20Alfaruq,%20saya%20ingin%20donasi%20untuk%20pengembangan%20aplikasi%20TokoKu%20POS" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="ml-1 text-primary hover:underline"
+              >
+                WA: 0853 5990 7696
+              </a>
+            </p>
+          </div>
+          
+          <div className="max-w-xs mx-auto p-4 rounded-2xl bg-primary/5 border border-primary/10">
+            <p className="text-[0.75rem] font-semibold leading-relaxed">
+              Aplikasi ini <span className="font-bold text-primary">GRATIS</span>. Jika Anda merasa terbantu dan ingin berdonasi, silakan hubungi WhatsApp di atas. Terus dukung digitalisasi UMKM Indonesia! 🇮🇩
+            </p>
+          </div>
 
-          {/* UMKM Preferences */}
-          <SettingsSection title="Preferensi Bisnis" icon={Store}>
-            <div className="p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Gunakan No. Meja</p>
-                  <p className="text-xs text-muted-foreground">Aktifkan untuk bisnis F&B / Restoran</p>
-                </div>
-                <button
-                  onClick={() => saveProfile({ useTable: !profile?.useTable })}
-                  className={cn(
-                    "w-12 h-6 rounded-full transition-all duration-200 relative",
-                    profile?.useTable ? "bg-primary" : "bg-muted"
-                  )}
-                >
-                  <div className={cn(
-                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-200",
-                    profile?.useTable ? "left-7" : "left-1"
-                  )} />
-                </button>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Gunakan No. HP / WA</p>
-                  <p className="text-xs text-muted-foreground">Aktifkan untuk Retail / Pengiriman</p>
-                </div>
-                <button
-                  onClick={() => saveProfile({ usePhoneNumber: !profile?.usePhoneNumber })}
-                  className={cn(
-                    "w-12 h-6 rounded-full transition-all duration-200 relative",
-                    profile?.usePhoneNumber ? "bg-primary" : "bg-muted"
-                  )}
-                >
-                  <div className={cn(
-                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-200",
-                    profile?.usePhoneNumber ? "left-7" : "left-1"
-                  )} />
-                </button>
-              </div>
-            </div>
-          </SettingsSection>
-
-          {/* Data */}
-          <SettingsSection title="Data & Backup" icon={Database}>
-            <SettingsRow
-              icon={Download} iconColor="bg-blue-50 text-blue-600"
-              label="Backup Database" desc="Simpan semua data ke file JSON"
-              onClick={handleBackup}
-            />
-            <input type="file" accept=".json" className="hidden" ref={restoreRef} onChange={handleRestore} />
-            <SettingsRow
-              icon={Upload} iconColor="bg-emerald-50 text-emerald-600"
-              label="Restore Database" desc="Pulihkan dari file backup JSON"
-              onClick={() => restoreRef.current?.click()}
-              last
-            />
-          </SettingsSection>
-
-          {/* About */}
-          <SettingsSection title="Tentang Aplikasi" icon={Info}>
-            <div className="p-4 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Versi</span>
-                <span className="font-semibold text-foreground">1.0.0</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Platform</span>
-                <span className="font-semibold text-foreground">Next.js + Capacitor</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Database</span>
-                <span className="font-semibold text-foreground">Dexie.js (Offline)</span>
-              </div>
-            </div>
-          </SettingsSection>
-
-          {/* Danger Zone */}
-          <SettingsSection title="Zona Berbahaya" icon={Trash2}>
-            <SettingsRow
-              icon={RotateCcw} iconColor="bg-red-50 text-destructive"
-              label="Reset Setup Toko"
-              desc="Kembali ke layar onboarding awal"
-              onClick={handleResetOnboarding}
-              danger last
-            />
-          </SettingsSection>
-
-          <p className="text-center text-xs text-muted-foreground/60 pb-4">
-            TokoKu POS · Dibuat dengan ❤️ untuk UMKM Indonesia
-          </p>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <div className="w-8 h-[1px] bg-foreground/20" />
+            <p className="text-[0.5625rem] font-medium italic">Digitalizing Indonesian UMKM with ❤️</p>
+            <div className="w-8 h-[1px] bg-foreground/20" />
+          </div>
         </div>
       </div>
     </div>

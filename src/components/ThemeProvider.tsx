@@ -2,35 +2,42 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "dark" | "light" | "system";
+export type Theme = "dark" | "light" | "system";
+export type AccentColor = "violet" | "blue" | "emerald" | "rose" | "amber";
 
-type ThemeProviderProps = {
-  children: React.ReactNode;
-  defaultTheme?: Theme;
-  storageKey?: string;
-  attribute?: string;
-  enableSystem?: boolean;
-  disableTransitionOnChange?: boolean;
+const ACCENTS: Record<AccentColor, { h: number; s: number; l: number; gh: number }> = {
+  violet: { h: 250, s: 85, l: 55, gh: 270 },
+  blue: { h: 215, s: 85, l: 55, gh: 195 },
+  emerald: { h: 155, s: 85, l: 45, gh: 175 },
+  rose: { h: 345, s: 85, l: 55, gh: 325 },
+  amber: { h: 38, s: 95, l: 55, gh: 25 },
 };
 
 type ThemeProviderState = {
   theme: Theme;
+  accent: AccentColor;
   setTheme: (theme: Theme) => void;
+  setAccent: (accent: AccentColor) => void;
 };
 
-const initialState: ThemeProviderState = {
+const ThemeProviderContext = createContext<ThemeProviderState>({
   theme: "system",
+  accent: "violet",
   setTheme: () => null,
-};
-
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+  setAccent: () => null,
+});
 
 export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "ui-theme",
-  ...props
-}: ThemeProviderProps) {
+  accentKey = "ui-accent",
+}: {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+  accentKey?: string;
+}) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
@@ -38,36 +45,47 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
+  const [accent, setAccent] = useState<AccentColor>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem(accentKey) as AccentColor) || "violet";
+    }
+    return "violet";
+  });
+
   useEffect(() => {
     const root = window.document.documentElement;
-
     root.classList.remove("light", "dark");
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
+    const effectiveTheme = theme === "system" 
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : theme;
 
-      root.classList.add(systemTheme);
-      return;
-    }
+    root.classList.add(effectiveTheme);
 
-    root.classList.add(theme);
-  }, [theme]);
+    // Apply Accent Colors
+    const config = ACCENTS[accent];
+    const lValue = effectiveTheme === "dark" ? config.l + 10 : config.l;
+    
+    root.style.setProperty("--primary", `hsl(${config.h}, ${config.s}%, ${lValue}%)`);
+    root.style.setProperty("--primary-gradient", `hsl(${config.gh}, ${config.s}%, ${lValue - 5}%)`);
+    root.style.setProperty("--ring", `hsl(${config.h}, ${config.s}%, ${lValue}%)`);
+  }, [theme, accent]);
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      if (typeof window !== "undefined") {
-        localStorage.setItem(storageKey, theme);
-      }
-      setTheme(theme);
+    accent,
+    setTheme: (t: Theme) => {
+      localStorage.setItem(storageKey, t);
+      setTheme(t);
+    },
+    setAccent: (a: AccentColor) => {
+      localStorage.setItem(accentKey, a);
+      setAccent(a);
     },
   };
 
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>
   );
@@ -75,9 +93,7 @@ export function ThemeProvider({
 
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext);
-
   if (context === undefined)
     throw new Error("useTheme must be used within a ThemeProvider");
-
   return context;
 };

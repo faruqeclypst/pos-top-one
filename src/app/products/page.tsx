@@ -1,28 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import db, { type Product, type Supplier } from "@/lib/db";
+import db, { type Product, type Supplier, type Category } from "@/lib/db";
 import {
   Search, Plus, Edit2, Trash2, Package, ScanLine,
   X, ChevronRight, Tag, Layers, ArrowUpDown, Info, Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ImageUploader from "@/components/ImageUploader";
+import PageHeader from "@/components/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 // ── Skeleton ──────────────────────────────────────────────
 function ProductsSkeleton() {
   return (
-    <div className="p-4 space-y-3 pt-20 max-w-5xl mx-auto w-full">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex gap-3 p-3 rounded-2xl shimmer h-24" />
-      ))}
+    <div className="animate-in fade-in duration-300">
+      <div className="w-full h-48 shimmer mb-6" />
+      <div className="px-4 space-y-4 max-w-5xl mx-auto w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl shimmer" />)}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ── Product List Item ─────────────────────────────────────
-function ProductItem({ product, onEdit, onDelete, supplierName }: {
+// ── Bento Table Header ─────────────────────────────────────
+function ProductTableHeader() {
+  return (
+    <div className="hidden lg:grid grid-cols-[80px_1fr_180px_160px_120px] gap-4 px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
+      <span>Gambar</span>
+      <span>Produk</span>
+      <span>Kategori</span>
+      <span>Stok</span>
+      <span className="text-right">Harga</span>
+    </div>
+  );
+}
+
+// ── Product Bento Row ─────────────────────────────────────
+function ProductBentoRow({ product, onEdit, onDelete, supplierName }: {
   product: Product;
   onEdit: (p: Product) => void;
   onDelete: (id: string) => void;
@@ -32,339 +53,383 @@ function ProductItem({ product, onEdit, onDelete, supplierName }: {
   const stockStatus = product.stock <= 0 ? "error" : product.stock <= 5 ? "warning" : "success";
 
   return (
-    <div className="card-premium p-4 flex items-center gap-4 group hover:border-primary/20 transition-colors">
-      {/* Image */}
-      <div className="w-16 h-16 rounded-2xl bg-muted overflow-hidden shrink-0 flex items-center justify-center border border-border/50">
-        {imageUrl ? (
-          <img src={imageUrl} alt={product.name} className="w-full h-full object-cover" />
-        ) : (
-          <Package className="w-7 h-7 text-muted-foreground/30" />
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-bold text-foreground truncate">{product.name}</p>
-          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground font-medium shrink-0">
-            {product.category || "Umum"}
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded">
-            {product.sku || "NO-SKU"}
-          </span>
-          {supplierName && (
-            <div className="flex items-center gap-1 text-[10px] text-primary/70 font-medium">
-              <Building2 className="w-2.5 h-2.5" />
-              <span className="truncate max-w-[80px]">{supplierName}</span>
-            </div>
+    <Card className="group p-4 lg:p-0 overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-3 rounded-2xl">
+      <div className="flex flex-col lg:grid lg:grid-cols-[80px_1fr_180px_160px_120px] items-center gap-4 lg:gap-4 lg:h-20 lg:px-4">
+        {/* Box 1: Image */}
+        <div className="w-20 h-20 lg:w-14 lg:h-14 rounded-2xl bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-colors">
+          {imageUrl ? (
+            <img src={imageUrl} alt={product.name} className="w-full h-full object-contain p-1.5" />
+          ) : (
+            <Package className="w-6 h-6 text-muted-foreground/20" />
           )}
-          <span className="text-[10px] text-muted-foreground">{product.unit}</span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <p className="text-sm font-bold text-primary">Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}</p>
-            <p className="text-[10px] text-muted-foreground">HPP: Rp {product.cogs?.toLocaleString("id-ID") || 0}</p>
+        {/* Box 2: Name & Info */}
+        <div className="flex-1 w-full min-w-0 text-center lg:text-left">
+          <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{product.name}</h3>
+          <div className="flex items-center justify-center lg:justify-start gap-2 mt-1">
+            <span className="text-[0.5625rem] font-mono text-muted-foreground/60 uppercase tracking-tighter">{product.sku || "NO-SKU"}</span>
+            {supplierName && (
+              <span className="text-[0.5625rem] text-muted-foreground/40 font-medium truncate max-w-[100px]">/ {supplierName}</span>
+            )}
           </div>
-          <span className={cn(
-            "text-[10px] font-bold px-2.5 py-1 rounded-lg",
-            stockStatus === "success" && "bg-emerald-50 text-emerald-600 border border-emerald-100",
-            stockStatus === "warning" && "bg-amber-50 text-amber-600 border border-amber-100",
-            stockStatus === "error" && "bg-rose-50 text-rose-600 border border-rose-100"
-          )}>
-            {product.stock <= 0 ? "Habis" : `Stok: ${product.stock}`}
-          </span>
+        </div>
+
+        {/* Box 3: Category */}
+        <div className="hidden lg:flex items-center">
+          <Badge variant="outline" className="text-[0.5625rem] font-bold h-5 border-muted-foreground/20 text-muted-foreground bg-muted/20">
+            {product.category || "Umum"}
+          </Badge>
+        </div>
+
+        {/* Box 4: Stock */}
+        <div className="flex lg:flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start px-4 lg:px-0 py-2 lg:py-0 bg-muted/20 lg:bg-transparent rounded-xl">
+          <span className="lg:hidden text-[0.625rem] font-black text-muted-foreground uppercase tracking-widest">Stok</span>
+          <Badge 
+            variant={stockStatus === "error" ? "destructive" : stockStatus === "warning" ? "warning" : "success"} 
+            className="h-6 font-black text-[0.625rem] px-3 shadow-sm border-none"
+          >
+            {product.stock <= 0 ? "HABIS" : `${product.stock} ${product.unit || "Pcs"}`}
+          </Badge>
+        </div>
+
+        {/* Box 5: Price & Actions */}
+        <div className="flex lg:grid items-center justify-between lg:justify-end w-full lg:w-auto gap-4 px-4 lg:px-0 pb-2 lg:pb-0">
+          <div className="text-right lg:pr-2">
+            <span className="lg:hidden text-[0.625rem] font-black text-muted-foreground uppercase tracking-widest block mb-1">Harga</span>
+            <p className="text-base font-black text-primary tracking-tighter">
+              Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 lg:translate-x-2 lg:group-hover:translate-x-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(product)}
+              className="w-9 h-9 rounded-xl hover:bg-blue-500/10 hover:text-blue-500"
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(product.id)}
+              className="w-9 h-9 rounded-xl hover:bg-rose-500/10 hover:text-rose-500"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => onEdit(product)}
-          className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center touchable"
-        >
-          <Edit2 className="w-4 h-4 text-primary" />
-        </button>
-        <button
-          onClick={() => onDelete(product.id)}
-          className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center touchable"
-        >
-          <Trash2 className="w-4 h-4 text-rose-500" />
-        </button>
-      </div>
-    </div>
+    </Card>
   );
 }
 
-// ── Main Products Page ────────────────────────────────────
+// ── Main Products Page ─────────────────────────────────────
 export default function ProductsPage() {
   const products = useLiveQuery(() => db.products.orderBy("name").toArray());
   const suppliers = useLiveQuery(() => db.suppliers.toArray());
+  const categories = useLiveQuery(() => db.categories.toArray());
+  
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Product>>({
-    id: "", sku: "", barcode: "", name: "", sellingPrice: 0, cogs: 0, stock: 0, category: "", unit: "Pcs", supplierId: "", image: null
+  const [formData, setFormData] = useState({
+    name: "",
+    sku: "",
+    barcode: "",
+    category: "",
+    supplierId: "",
+    cogs: 0,
+    sellingPrice: 0,
+    stock: 0,
+    unit: "Pcs",
+    image: null as Blob | null
   });
 
-  const filtered = products?.filter(p =>
+  const filtered = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase()) ||
-    p.barcode?.toLowerCase().includes(search.toLowerCase())
+    (p.sku || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleOpenForm = (product?: Product) => {
-    if (product) {
-      setEditingId(product.id);
-      setFormData(product);
+  // Stats logic
+  const totalStock = products?.reduce((acc, p) => acc + p.stock, 0) || 0;
+  const outOfStockCount = products?.filter(p => p.stock <= 0).length || 0;
+  const totalValue = products?.reduce((acc, p) => acc + (p.sellingPrice * p.stock), 0) || 0;
+
+  const handleOpenForm = (p?: Product) => {
+    if (p) {
+      setEditingId(p.id);
+      setFormData({
+        name: p.name,
+        sku: p.sku || "",
+        barcode: p.barcode || "",
+        category: p.category || "",
+        supplierId: p.supplierId || "",
+        cogs: p.cogs || 0,
+        sellingPrice: p.sellingPrice,
+        stock: p.stock,
+        unit: p.unit,
+        image: p.image || null
+      });
     } else {
-      const newId = `PRD-${Date.now()}`;
       setEditingId(null);
-      setFormData({ 
-        id: newId, sku: "", barcode: "", name: "", 
-        sellingPrice: 0, cogs: 0, stock: 0, category: "", 
-        unit: "Pcs", supplierId: "", image: null 
+      setFormData({
+        name: "", sku: "", barcode: "", category: "", supplierId: "",
+        cogs: 0, sellingPrice: 0, stock: 0, unit: "Pcs", image: null
       });
     }
     setIsFormOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.name) return alert("Nama barang wajib diisi");
-    if (!formData.sku) return alert("SKU wajib diisi");
+    if (!formData.name) return;
+    
+    // Ensure all required fields from Product interface are present
+    const productData: any = {
+      ...formData,
+      createdAt: Date.now()
+    };
 
-    try {
-      if (!editingId || (editingId && formData.sku !== (products?.find(p => p.id === editingId)?.sku))) {
-        const existing = await db.products.where("sku").equals(formData.sku!).first();
-        if (existing) return alert("SKU sudah digunakan oleh barang lain");
-      }
-
-      const idToUse = formData.id || `PRD-${Date.now()}`;
-
-      await db.products.put({
-        id: idToUse,
-        sku: formData.sku!,
-        barcode: formData.barcode || formData.sku!,
-        name: formData.name!,
-        sellingPrice: Number(formData.sellingPrice) || 0,
-        cogs: Number(formData.cogs) || 0,
-        stock: Number(formData.stock) || 0,
-        unit: formData.unit || "Pcs",
-        category: formData.category || "Umum",
-        supplierId: formData.supplierId || "",
-        image: formData.image || null,
-        createdAt: formData.createdAt || Date.now(),
+    if (editingId) {
+      const { id, ...updateData } = productData;
+      await db.products.update(editingId, updateData);
+    } else {
+      await db.products.add({ 
+        ...productData, 
+        id: `PROD-${Date.now()}`
       });
-      setIsFormOpen(false);
-    } catch (e) {
-      console.error(e);
-      alert("Gagal menyimpan data barang.");
     }
+    setIsFormOpen(false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Hapus barang ini?")) return;
-    await db.products.delete(id);
+    if (confirm("Hapus produk ini?")) {
+      await db.products.delete(id);
+    }
   };
 
   if (!products) return <ProductsSkeleton />;
 
   return (
-    <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto">
-        {/* ── Header ── */}
-        <div className="bg-background/95 px-4 pt-5 pb-3 space-y-4" style={{ backdropFilter: "blur(12px)" }}>
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground tracking-tight">Katalog Barang</h1>
-            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
-              {products.length} Item
-            </span>
-          </div>
-          
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                className="w-full h-12 pl-10 pr-4 bg-muted/50 rounded-2xl text-sm placeholder:text-muted-foreground border-0 outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm shadow-black/[0.02]"
-                placeholder="Cari nama, SKU, atau barcode..."
+    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+      <PageHeader
+        title="Katalog Barang"
+        subtitle="Manajemen Stok"
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="relative group hidden md:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary" />
+              <Input
+                className="h-10 w-64 pl-9 bg-muted/40 border-none rounded-xl text-sm"
+                placeholder="Cari barang..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <button className="w-12 h-12 rounded-2xl bg-card border border-border/50 flex items-center justify-center touchable shadow-sm">
-              <ScanLine className="w-5 h-5 text-foreground" />
-            </button>
+            <Button
+              onClick={() => handleOpenForm()}
+              className="h-10 rounded-xl gradient-primary text-white font-bold flex items-center gap-2 px-4 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Tambah</span>
+            </Button>
           </div>
-        </div>
+        }
+      />
 
-        {/* ── List ── */}
-        <div className="flex-1 overflow-y-auto scroll-area px-4 pb-32 pt-2 space-y-3">
-          {filtered?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-              <div className="w-20 h-20 rounded-[2.5rem] bg-muted/50 flex items-center justify-center">
-                <Package className="w-10 h-10 text-muted-foreground/30" />
-              </div>
-              <div>
-                <p className="text-base font-bold text-foreground">Tidak ada barang</p>
-                <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">Coba cari dengan kata kunci lain atau tambah barang baru</p>
-              </div>
+      <div className="w-full px-5 pt-8 mx-auto space-y-8 max-w-[1600px]">
+        {/* Bento Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <Card className="p-6 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+              <Package className="w-16 h-16 text-blue-500" />
             </div>
-          ) : filtered?.map(p => {
-            const sName = suppliers?.find(s => s.id === p.supplierId)?.name;
-            return <ProductItem key={p.id} product={p} onEdit={handleOpenForm} onDelete={handleDelete} supplierName={sName} />;
-          })}
+            <div className="relative z-10">
+              <p className="text-[0.625rem] font-black text-blue-600/60 uppercase tracking-[0.2em] mb-1">Total Produk</p>
+              <h3 className="text-3xl font-black text-blue-600 tracking-tight">{products.length}</h3>
+              <p className="text-[0.625rem] font-bold text-blue-600/40 mt-1">{totalStock} Total Item</p>
+            </div>
+          </Card>
+
+          <Card className="p-6 border-none shadow-sm bg-rose-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-rose-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+              <Info className="w-16 h-16 text-rose-500" />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[0.625rem] font-black text-rose-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
+              <h3 className="text-3xl font-black text-rose-600 tracking-tight">{outOfStockCount}</h3>
+              <p className="text-[0.625rem] font-bold text-rose-600/40 mt-1">Perlu restok segera</p>
+            </div>
+          </Card>
+
+          <Card className="p-6 border-none shadow-sm bg-emerald-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-emerald-500/10 transition-colors">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+              <Tag className="w-16 h-16 text-emerald-500" />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[0.625rem] font-black text-emerald-600/60 uppercase tracking-[0.2em] mb-1">Nilai Inventori</p>
+              <h3 className="text-2xl font-black text-emerald-600 tracking-tight">Rp {totalValue.toLocaleString("id-ID")}</h3>
+              <p className="text-[0.625rem] font-bold text-emerald-600/40 mt-1">Estimasi nilai jual</p>
+            </div>
+          </Card>
         </div>
 
-        {/* ── FAB ── */}
-        <button
-          onClick={() => handleOpenForm()}
-          className="fixed bottom-[88px] right-6 xl:right-[calc(50%-612px+24px)] w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center shadow-xl shadow-primary/30 touchable z-20"
-        >
-          <Plus className="w-7 h-7 text-white" />
-        </button>
+        {/* Bento Table */}
+        <div className="space-y-1">
+          <ProductTableHeader />
+          {filtered?.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-6 text-center">
+              <div className="w-24 h-24 rounded-[3rem] bg-muted/30 flex items-center justify-center relative">
+                <Package className="w-12 h-12 text-muted-foreground/20" />
+                <div className="absolute inset-0 rounded-[3rem] border border-dashed border-muted-foreground/20 animate-pulse" />
+              </div>
+              <p className="text-base font-black text-foreground uppercase tracking-widest">Produk Tidak Ditemukan</p>
+            </div>
+          ) : (
+            filtered?.map((p, idx) => (
+              <div 
+                key={p.id} 
+                className="animate-in slide-in-from-bottom-2 duration-300 fill-mode-both"
+                style={{ animationDelay: `${idx * 30}ms` }}
+              >
+                <ProductBentoRow
+                  product={p}
+                  supplierName={suppliers?.find(s => s.id === p.supplierId)?.name}
+                  onEdit={handleOpenForm}
+                  onDelete={handleDelete}
+                />
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      {/* ── Form Sheet ── */}
+      {/* ── Form Modal ── */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-[60] bg-background flex flex-col animate-in slide-in-from-bottom duration-300">
-          <div className="flex items-center gap-3 px-5 pt-14 pb-4 border-b border-border/50 bg-background/95 sticky top-0 z-10 backdrop-blur-md">
-            <button onClick={() => setIsFormOpen(false)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-              <X className="w-4 h-4" />
-            </button>
-            <h2 className="text-base font-bold text-foreground">
-              {editingId ? "Ubah Detail Barang" : "Tambah Barang Baru"}
-            </h2>
+        <div className="fixed inset-0 z-[110] bg-background flex flex-col animate-in slide-in-from-bottom duration-300">
+          <div className="flex items-center justify-between px-5 pt-10 pb-4 border-b border-border/50 bg-background/95 sticky top-0 z-10 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => setIsFormOpen(false)} className="rounded-full">
+                <X className="w-5 h-5" />
+              </Button>
+              <h2 className="text-lg font-bold text-foreground">
+                {editingId ? "Ubah Detail Produk" : "Tambah Produk Baru"}
+              </h2>
+            </div>
+            <Button onClick={handleSave} className="h-10 rounded-xl gradient-primary text-white font-bold text-xs tracking-wider px-6">
+              SIMPAN
+            </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto scroll-area px-5 py-6 space-y-8 max-w-2xl mx-auto w-full">
+          <div className="flex-1 overflow-y-auto scroll-area px-5 py-6 space-y-8 max-w-2xl mx-auto w-full pb-32">
             {/* Image Section */}
             <div className="space-y-3">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] px-1">
-                Foto Produk
-              </label>
-              <ImageUploader
-                initialBlob={formData.image as Blob | undefined}
-                onChange={blob => setFormData({ ...formData, image: blob })}
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Foto Produk</p>
+              <ImageUploader 
+                initialBlob={formData.image as Blob | undefined} 
+                onChange={(blob) => setFormData({ ...formData, image: blob })} 
               />
             </div>
 
-            {/* Identity Section */}
-            <div className="space-y-4">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] px-1 flex items-center gap-2">
-                Identitas Produk
-              </label>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground px-1">Nama Barang</p>
-                  <input
-                    className="w-full h-12 px-4 bg-muted/40 rounded-2xl text-sm border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all shadow-inner-sm"
-                    placeholder="Contoh: Kopi Gula Aren"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground px-1 flex items-center justify-between">
-                    SKU 
-                    <span className="text-[10px] font-normal text-rose-500 italic">Wajib</span>
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      className="flex-1 h-12 px-4 bg-muted/40 rounded-2xl text-sm font-mono border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all shadow-inner-sm"
-                      placeholder="KOPI-001"
-                      value={formData.sku}
-                      onChange={e => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Informasi Dasar</p>
+                <div className="space-y-4">
+                  <div className="space-y-1.5 flex-1">
+                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Nama Produk</p>
+                    <Input
+                      className="h-12 px-4 rounded-xl bg-muted/30 border-none font-bold"
+                      placeholder="Masukkan nama produk..."
+                      value={formData.name ?? ""}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
-                    <button className="w-12 h-12 rounded-2xl bg-muted/60 flex items-center justify-center touchable border border-border/50">
-                      <ScanLine className="w-5 h-5 text-foreground" />
-                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">SKU / Kode Barang</p>
+                      <Input
+                        className="h-12 px-4 rounded-xl bg-muted/30 border-none"
+                        placeholder="BRS-001"
+                        value={formData.sku ?? ""}
+                        onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Satuan</p>
+                      <Input
+                        className="h-12 px-4 rounded-xl bg-muted/30 border-none"
+                        placeholder="Pcs, Kg, Box..."
+                        value={formData.unit ?? ""}
+                        onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground px-1">Kategori</p>
-                  <input
-                    className="w-full h-12 px-4 bg-muted/40 rounded-2xl text-sm border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder="Minuman, Makanan..."
-                    value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground px-1">Pemasok (Supplier)</p>
-                  <select
-                    className="w-full h-12 px-4 bg-muted/40 rounded-2xl text-sm border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-                    value={formData.supplierId}
-                    onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
-                  >
-                    <option value="">Pilih Supplier...</option>
-                    {suppliers?.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing Section */}
-            <div className="space-y-4">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] px-1">
-                Harga & Inventori
-              </label>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground px-1">Harga Jual</p>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">Rp</span>
-                    <input
-                      type="number"
-                      className="w-full h-12 pl-10 pr-4 bg-muted/40 rounded-2xl text-sm font-bold text-primary border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                      value={formData.sellingPrice || ""}
-                      onChange={e => setFormData({ ...formData, sellingPrice: Number(e.target.value) })}
-                    />
+              <div className="space-y-2">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Kategori & Pemasok</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Kategori</p>
+                    <select
+                      className="w-full h-12 px-4 rounded-xl bg-muted/30 border-none text-sm outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                      value={formData.category ?? "Umum"}
+                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    >
+                      <option value="">Pilih Kategori</option>
+                      {categories?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Pemasok</p>
+                    <select
+                      className="w-full h-12 px-4 rounded-xl bg-muted/30 border-none outline-none text-sm appearance-none"
+                      value={formData.supplierId}
+                      onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
+                    >
+                      <option value="">Pilih Pemasok</option>
+                      {suppliers?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-foreground px-1">HPP (Modal)</p>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">Rp</span>
-                    <input
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Harga & Stok</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Harga Beli (Rp)</p>
+                    <Input
                       type="number"
-                      className="w-full h-12 pl-10 pr-4 bg-muted/40 rounded-2xl text-sm font-medium border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                      value={formData.cogs || ""}
+                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
+                      value={formData.cogs ?? ""}
                       onChange={e => setFormData({ ...formData, cogs: Number(e.target.value) })}
                     />
                   </div>
-                </div>
-                <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                  <p className="text-xs font-semibold text-foreground px-1">Stok Saat Ini</p>
-                  <input
-                    type="number"
-                    className="w-full h-12 px-4 bg-muted/40 rounded-2xl text-sm font-bold border border-border/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    value={formData.stock || ""}
-                    onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })}
-                  />
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Harga Jual (Rp)</p>
+                    <Input
+                      type="number"
+                      className="h-12 px-4 rounded-xl bg-muted/30 border-none text-primary font-bold"
+                      value={formData.sellingPrice ?? ""}
+                      onChange={e => setFormData({ ...formData, sellingPrice: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Stok Saat Ini</p>
+                    <Input
+                      type="number"
+                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
+                      value={formData.stock ?? ""}
+                      onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* CTA Footer */}
-          <div className="px-5 pb-10 pt-4 border-t border-border/50 bg-background/95 backdrop-blur-md sticky bottom-0">
-            <div className="max-w-2xl mx-auto">
-              <button
-                onClick={handleSave}
-                className="w-full h-14 rounded-2xl gradient-primary text-white font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
-              >
-                {editingId ? "Simpan Perubahan" : "Simpan Barang Baru"}
-              </button>
             </div>
           </div>
         </div>

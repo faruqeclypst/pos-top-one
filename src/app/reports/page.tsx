@@ -9,20 +9,25 @@ import {
   ShoppingCart, BarChart3, CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PageHeader from "@/components/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import CategoryBar from "@/components/CategoryBar";
 
 const RANGES = [
   { id: "today", label: "Hari Ini" },
   { id: "yesterday", label: "Kemarin" },
-  { id: "week", label: "7 Hari Terakhir" },
+  { id: "week", label: "7 Hari" },
   { id: "month", label: "Bulan Ini" },
   { id: "last_month", label: "Bulan Lalu" },
   { id: "year", label: "Tahun Ini" },
 ];
 
 const PAYMENT_COLORS: Record<string, string> = {
-  CASH: "bg-emerald-50 text-emerald-700",
-  QRIS: "bg-blue-50 text-blue-700",
-  TRANSFER: "bg-violet-50 text-violet-700",
+  CASH: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+  QRIS: "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
+  TRANSFER: "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400",
 };
 
 function filterByRange(all: Transaction[], range: string): Transaction[] {
@@ -61,12 +66,14 @@ function filterByRange(all: Transaction[], range: string): Transaction[] {
 
 function ReportsSkeleton() {
   return (
-    <div className="p-4 space-y-4 pt-20 max-w-4xl mx-auto w-full">
-      <div className="h-36 rounded-3xl shimmer" />
-      <div className="grid grid-cols-3 gap-3">
-        {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl shimmer" />)}
+    <div className="animate-in fade-in duration-300">
+      <div className="w-full h-48 shimmer mb-6" />
+      <div className="px-4 space-y-4 max-w-4xl mx-auto w-full">
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-2xl shimmer" />)}
+        </div>
+        <div className="h-40 rounded-2xl shimmer" />
       </div>
-      <div className="h-40 rounded-2xl shimmer" />
     </div>
   );
 }
@@ -74,11 +81,35 @@ function ReportsSkeleton() {
 export default function ReportsPage() {
   const { profile } = useStoreProfile();
   const [range, setRange] = useState("today");
-  const allTransactions = useLiveQuery(() => db.transactions.reverse().sortBy("date"));
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  if (!allTransactions) return <ReportsSkeleton />;
+  const allTransactions = useLiveQuery(() => db.transactions.reverse().toArray());
+  const allItems = useLiveQuery(() => db.transactionItems.toArray());
+  const products = useLiveQuery(() => db.products.toArray());
 
-  const transactions = filterByRange(allTransactions, range);
+  if (!allTransactions || !allItems || !products) return <ReportsSkeleton />;
+
+  // Filter logic
+  const filteredByRange = filterByRange(allTransactions, range);
+  
+  // Filter by category
+  let transactions = filteredByRange;
+  if (selectedCategory !== "All") {
+    // Find product IDs in this category
+    const categoryProductIds = products
+      .filter(p => p.category === selectedCategory)
+      .map(p => p.id);
+    
+    // Find transaction IDs that contain these products
+    const validTxIds = new Set(
+      allItems
+        .filter(item => categoryProductIds.includes(item.productId))
+        .map(item => item.transactionId)
+    );
+    
+    transactions = filteredByRange.filter(t => validTxIds.has(t.id));
+  }
+
   const totalSales = transactions.reduce((s, t) => s + t.total, 0);
   const totalTrx = transactions.length;
   const avgOrder = totalTrx > 0 ? totalSales / totalTrx : 0;
@@ -108,154 +139,156 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="flex flex-col bg-background min-h-full pb-24">
-      <div className="max-w-4xl mx-auto w-full">
-        {/* Header */}
-        <div className="px-4 pt-5 pb-3 bg-background/95 sticky top-0 z-10" style={{ backdropFilter: "blur(12px)" }}>
-          <h1 className="text-lg font-bold text-foreground mb-3">Laporan Penjualan</h1>
-
-          {/* Period Filter */}
+    <div className="pb-32 animate-in fade-in duration-500 min-h-screen bg-background">
+      <PageHeader
+        title="Laporan Bisnis"
+        subtitle="Analisis Performa"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleExport}
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 rounded-xl bg-card border-border/50 shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleShareWA}
+              className="h-10 rounded-xl gradient-primary text-white shadow-lg shadow-primary/20 gap-2 font-bold text-xs"
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="hidden sm:inline">BAGIKAN</span>
+            </Button>
+          </div>
+        }
+      />
+      
+      <div className="bg-card/50 backdrop-blur-md border-b border-border/50 sticky top-[73px] z-30 transition-all duration-300">
+        <div className="max-w-[1600px] mx-auto w-full px-5 py-4 space-y-4">
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             {RANGES.map(r => (
               <button
                 key={r.id}
                 onClick={() => setRange(r.id)}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0",
-                  range === r.id
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  "px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                  range === r.id 
+                    ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                    : "bg-muted/40 text-muted-foreground hover:bg-muted"
                 )}
               >
                 {r.label}
               </button>
             ))}
           </div>
+
+          <CategoryBar 
+            selectedCategory={selectedCategory} 
+            onSelect={setSelectedCategory} 
+          />
+        </div>
+      </div>
+
+      <div className="w-full px-5 pt-8 mx-auto space-y-8 max-w-[1600px] pb-32">
+        {/* Main Revenue Card */}
+        <div className="animate-in slide-in-from-bottom-4 duration-500 fill-mode-both">
+          <Card className="gradient-primary border-none p-8 relative overflow-hidden text-white shadow-2xl shadow-primary/30 rounded-[2rem]">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-20 -mt-20 animate-pulse" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/5 blur-[60px] rounded-full -ml-20 -mb-20" />
+            
+            <div className="relative z-10 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="bg-white/20 backdrop-blur-md p-2.5 rounded-2xl">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <Badge className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md px-3 py-1 font-black text-[0.625rem] tracking-widest uppercase">
+                  {RANGES.find(r => r.id === range)?.label}
+                </Badge>
+              </div>
+              
+              <div>
+                <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em] mb-2">Total Pendapatan</p>
+                <h2 className="text-4xl sm:text-5xl font-black tracking-tighter">
+                  Rp {totalSales.toLocaleString("id-ID")}
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/10">
+                <div>
+                  <p className="text-white/60 text-[0.625rem] font-bold uppercase tracking-widest mb-1">Transaksi</p>
+                  <p className="text-xl font-black">{totalTrx} Trx</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-[0.625rem] font-bold uppercase tracking-widest mb-1">Rata-rata</p>
+                  <p className="text-xl font-black">Rp {Math.round(avgOrder).toLocaleString("id-ID")}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <div className="px-4 pt-2 space-y-4">
-          {/* Revenue Card */}
-          <div className="gradient-primary rounded-3xl p-5 relative overflow-hidden">
-            <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/10 blur-xl" />
-            <div className="absolute -bottom-8 left-8 w-24 h-24 rounded-full bg-white/8 blur-xl" />
-            <div className="relative z-10">
-              <p className="text-white/70 text-xs font-medium uppercase tracking-widest">Total Pendapatan</p>
-              <p className="text-white text-4xl font-bold tracking-tight mt-2">
-                Rp {totalSales.toLocaleString("id-ID")}
-              </p>
-              <div className="flex gap-4 mt-4">
+        {/* Payment Methods */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
+          {Object.entries(byMethod).map(([method, amount]) => (
+            <Card key={method} className="p-4 border-none shadow-sm bg-card/40 backdrop-blur-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn("p-2.5 rounded-xl", 
+                  method === "CASH" ? "bg-emerald-500/10 text-emerald-500" :
+                  method === "QRIS" ? "bg-blue-500/10 text-blue-500" : 
+                  "bg-violet-500/10 text-violet-500"
+                )}>
+                  {method === "CASH" ? <CreditCard className="w-4 h-4" /> : <BarChart3 className="w-4 h-4" />}
+                </div>
                 <div>
-                  <p className="text-white/60 text-[10px] uppercase tracking-wider">Transaksi</p>
-                  <p className="text-white font-bold text-lg">{totalTrx}</p>
-                </div>
-                <div className="w-px bg-white/20" />
-                <div>
-                  <p className="text-white/60 text-[10px] uppercase tracking-wider">Rata-rata</p>
-                  <p className="text-white font-bold text-lg">Rp {Math.round(avgOrder).toLocaleString("id-ID")}</p>
+                  <p className="text-[0.625rem] font-bold text-muted-foreground uppercase tracking-widest">{method}</p>
+                  <p className="text-sm font-black text-foreground">Rp {amount.toLocaleString("id-ID")}</p>
                 </div>
               </div>
-            </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Transaction History */}
+        <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Riwayat Penjualan</h3>
+            <Badge variant="outline" className="text-[0.5625rem] font-bold border-muted-foreground/20 text-muted-foreground uppercase">
+              {transactions.length} Transaksi
+            </Badge>
           </div>
-
-          {/* Mini Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="card-premium p-3 text-center">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-2">
-                <ShoppingCart className="w-4 h-4 text-blue-600" />
-              </div>
-              <p className="text-lg font-bold text-foreground">{totalTrx}</p>
-              <p className="text-[10px] text-muted-foreground">Transaksi</p>
-            </div>
-            <div className="card-premium p-3 text-center">
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center mx-auto mb-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-              </div>
-              <p className="text-lg font-bold text-foreground">Rp {(totalSales / 1000).toFixed(0)}K</p>
-              <p className="text-[10px] text-muted-foreground">Revenue</p>
-            </div>
-            <div className="card-premium p-3 text-center">
-              <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-2">
-                <BarChart3 className="w-4 h-4 text-violet-600" />
-              </div>
-              <p className="text-lg font-bold text-foreground">Rp {(avgOrder / 1000).toFixed(0)}K</p>
-              <p className="text-[10px] text-muted-foreground">Rata-rata</p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleExport}
-              className="flex items-center justify-center gap-2 h-12 rounded-2xl card-premium text-foreground font-semibold text-sm touchable"
-            >
-              <Download className="w-4 h-4 text-blue-600" />
-              Ekspor CSV
-            </button>
-            <button
-              onClick={handleShareWA}
-              className="flex items-center justify-center gap-2 h-12 rounded-2xl card-premium text-foreground font-semibold text-sm touchable"
-            >
-              <Share2 className="w-4 h-4 text-emerald-600" />
-              Bagikan WA
-            </button>
-          </div>
-
-          {/* Payment Breakdown */}
-          {Object.keys(byMethod).length > 0 && (
-            <div className="card-premium p-4 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Metode Pembayaran</p>
-              {Object.entries(byMethod).map(([method, amount]) => (
-                <div key={method} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
-                      <CreditCard className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <span className={cn("text-xs font-bold px-2.5 py-1 rounded-lg", PAYMENT_COLORS[method] || "bg-muted text-foreground")}>
-                      {method}
-                    </span>
-                  </div>
-                  <span className="text-sm font-bold text-foreground">Rp {amount.toLocaleString("id-ID")}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Transaction History */}
-          <div>
-            <p className="text-sm font-semibold text-foreground mb-3">Riwayat Transaksi</p>
+          
+          <div className="space-y-3">
             {transactions.length === 0 ? (
-              <div className="card-premium p-10 flex flex-col items-center text-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
-                  <Calendar className="w-7 h-7 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-medium text-foreground">Tidak ada transaksi</p>
-                <p className="text-xs text-muted-foreground">Belum ada penjualan di periode ini</p>
+              <div className="py-20 text-center bg-muted/20 rounded-[2rem] border border-dashed border-muted-foreground/10">
+                <ShoppingCart className="w-10 h-10 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Belum ada transaksi</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
-                {transactions.map(t => (
-                  <div key={t.id} className="card-premium p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <ShoppingCart className="w-5 h-5 text-primary" />
+              transactions.map((t) => (
+                <Card key={t.id} className="p-4 border-none shadow-sm bg-card/40 backdrop-blur-sm flex items-center justify-between group hover:bg-card/60 transition-all duration-300 rounded-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center text-muted-foreground group-hover:scale-110 transition-transform">
+                      <ShoppingCart className="w-5 h-5" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{t.id}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(t.date).toLocaleString("id-ID", {
-                          day: "2-digit", month: "short", year: "numeric",
-                          hour: "2-digit", minute: "2-digit"
-                        })}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-bold text-foreground">Trx #{t.id.slice(-4)}</p>
+                        <Badge className={cn("text-[0.5625rem] font-bold px-1.5 h-4 border-none", PAYMENT_COLORS[t.paymentMethod])}>
+                          {t.paymentMethod}
+                        </Badge>
+                      </div>
+                      <p className="text-[0.625rem] text-muted-foreground">
+                        {new Date(t.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} • {new Date(t.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                       </p>
                     </div>
-                    <div className="text-right shrink-0 space-y-1">
-                      <p className="text-sm font-bold text-foreground">Rp {t.total.toLocaleString("id-ID")}</p>
-                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", PAYMENT_COLORS[t.paymentMethod] || "bg-muted")}>
-                        {t.paymentMethod}
-                      </span>
-                    </div>
                   </div>
-                ))}
-              </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-foreground">Rp {t.total.toLocaleString("id-ID")}</p>
+                    <p className="text-[0.5625rem] font-bold text-emerald-500 uppercase tracking-widest">Sukses</p>
+                  </div>
+                </Card>
+              ))
             )}
           </div>
         </div>
