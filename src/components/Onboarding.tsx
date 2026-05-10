@@ -26,15 +26,24 @@ export default function Onboarding() {
   };
 
   const handleGoogleLogin = async () => {
+    console.log("Google login button clicked");
     setIsRestoring(true);
     try {
+      console.log("Initializing Google API...");
       await initGoogleApi();
+      console.log("Google API initialized successfully");
+      
       const token = await loginGoogle();
+      console.log("Login Google result:", token ? "success" : "no token");
+      
       if (!token) throw new Error("Gagal mendapatkan token Google");
+      
       const spreadsheetId = await findOrCreateSpreadsheet(token);
+      console.log("Spreadsheet ID:", spreadsheetId);
       
       if (spreadsheetId) {
         const success = await downloadFromCloud(spreadsheetId);
+        console.log("Download from cloud:", success);
         if (success) {
           alert("Data berhasil ditemukan! Memuat aplikasi...");
           window.location.reload();
@@ -43,12 +52,11 @@ export default function Onboarding() {
       }
       
       // Jika download gagal atau tidak ada data, tetap lanjut ke step 2
-      // User bisa menghubungkan Google Sheets nanti di settings
       alert("Akun Google terhubung. Silakan lanjut setup nama toko.");
       setStep(2);
-    } catch (err) {
-      console.error(err);
-      alert("Gagal login Google. Silakan coba lagi.");
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      alert(`Gagal login Google: ${err?.message || "Silakan coba lagi"}`);
     } finally {
       setIsRestoring(false);
     }

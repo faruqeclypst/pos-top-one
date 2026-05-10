@@ -47,20 +47,30 @@ export function initGoogleApi(): Promise<void> {
     }
 
     // 2. Wait for web scripts to be available on window (WEB ONLY)
-    await new Promise<void>((resolve) => {
-      const check = () => {
-        if ((window as any).gapi?.load && (window as any).google?.accounts?.oauth2) {
-          if (!resolved) {
-            resolved = true;
-            clearTimeout(timeout);
-            resolve();
+    try {
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          if ((window as any).gapi?.load && (window as any).google?.accounts?.oauth2) {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              resolve();
+            }
+          } else {
+            setTimeout(check, 100);
           }
-        } else {
-          setTimeout(check, 100);
-        }
-      };
-      check();
-    });
+        };
+        check();
+      });
+    } catch (e) {
+      console.warn("Google scripts load error", e);
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolvePromise();
+        return;
+      }
+    }
 
     if (gapiInited && gsisInited) {
       if (!resolved) {
@@ -72,24 +82,29 @@ export function initGoogleApi(): Promise<void> {
     }
 
     // 2. Initialize GAPI Client
-    (window as any).gapi.load('client', async () => {
-      try {
-        await (window as any).gapi.client.init({
-          discoveryDocs: [
-            "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
-            "https://sheets.googleapis.com/$discovery/rest?version=v4"
-          ],
-        });
-        gapiInited = true;
-      } catch (e) {
-        console.warn("GAPI client init failed", e);
-      }
-      if (!resolved && gsisInited) {
-        resolved = true;
-        clearTimeout(timeout);
-        resolvePromise();
-      }
-    });
+    try {
+      (window as any).gapi.load('client', async () => {
+        try {
+          await (window as any).gapi.client.init({
+            discoveryDocs: [
+              "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+              "https://sheets.googleapis.com/$discovery/rest?version=v4"
+            ],
+          });
+          gapiInited = true;
+        } catch (e) {
+          console.warn("GAPI client init failed", e);
+        }
+        if (!resolved && gsisInited) {
+          resolved = true;
+          clearTimeout(timeout);
+          resolvePromise();
+        }
+      });
+    } catch (e) {
+      console.warn("GAPI load error", e);
+      gapiInited = true; // Mark as initialized to avoid blocking
+    }
 
     // 3. Initialize Google Identity Services
     try {
@@ -105,7 +120,9 @@ export function initGoogleApi(): Promise<void> {
       gsisInited = true;
     } catch (e) {
       console.warn("GSIS init failed", e);
+      gsisInited = true; // Mark as initialized to avoid blocking
     }
+    
     if (!resolved && gapiInited) {
       resolved = true;
       clearTimeout(timeout);

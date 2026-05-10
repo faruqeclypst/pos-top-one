@@ -31,12 +31,16 @@ function AppSkeleton() {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, isLoading } = useStoreProfile();
   const [mounted, setMounted] = useState(false);
+  const [isTimeout, setIsTimeout] = useState(false);
   const [syncAttempted, setSyncAttempted] = useState(false);
   const pathname = usePathname();
   const isPOS = pathname === "/pos";
 
   useEffect(() => {
     setMounted(true);
+    // Timeout fallback - if still loading after 3 seconds, assume ready
+    const timer = setTimeout(() => setIsTimeout(true), 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Auto-sync on load - only once after onboarding
@@ -62,7 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [profile?.isGoogleConnected, profile?.spreadsheetId, profile?.isOnboarded, mounted, isLoading, syncAttempted]);
 
-  if (!mounted || isLoading) {
+  if (!mounted || (isLoading && !isTimeout)) {
     return <AppSkeleton />;
   }
 
