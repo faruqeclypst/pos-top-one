@@ -41,11 +41,14 @@ export default function Onboarding() {
           return;
         }
       }
-      alert("Akun Google terhubung, silakan lanjut setup nama toko.");
+      
+      // Jika download gagal atau tidak ada data, tetap lanjut ke step 2
+      // User bisa menghubungkan Google Sheets nanti di settings
+      alert("Akun Google terhubung. Silakan lanjut setup nama toko.");
       setStep(2);
     } catch (err) {
       console.error(err);
-      alert("Gagal login Google.");
+      alert("Gagal login Google. Silakan coba lagi.");
     } finally {
       setIsRestoring(false);
     }

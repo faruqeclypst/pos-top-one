@@ -31,14 +31,20 @@ function AppSkeleton() {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, isLoading } = useStoreProfile();
   const [mounted, setMounted] = useState(false);
+  const [syncAttempted, setSyncAttempted] = useState(false);
   const pathname = usePathname();
   const isPOS = pathname === "/pos";
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Auto-sync on load - only once after onboarding
+  useEffect(() => {
+    if (!mounted || isLoading || !profile?.isOnboarded) return;
     
-    // Auto-sync on load
-    if (profile?.isGoogleConnected && profile?.spreadsheetId) {
+    // Only attempt sync once
+    if (!syncAttempted && profile?.isGoogleConnected && profile?.spreadsheetId) {
       const runAutoSync = async () => {
         try {
           const { initGoogleApi, loginGoogle, syncAllToCloud } = await import("@/lib/google-sheets");
@@ -47,12 +53,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           await syncAllToCloud(profile.spreadsheetId!);
           console.log("Initial background sync completed");
         } catch (e) {
-          console.warn("Background auto-sync skipped (not authenticated)");
+          console.warn("Background auto-sync skipped (not authenticated or no connection)");
+        } finally {
+          setSyncAttempted(true);
         }
       };
       runAutoSync();
     }
-  }, [profile?.isGoogleConnected, profile?.spreadsheetId]);
+  }, [profile?.isGoogleConnected, profile?.spreadsheetId, profile?.isOnboarded, mounted, isLoading, syncAttempted]);
 
   if (!mounted || isLoading) {
     return <AppSkeleton />;

@@ -2,9 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import db, { type StoreProfile } from '@/lib/db';
 
 export function useStoreProfile() {
-  const profiles = useLiveQuery(() => db.storeProfile.toArray());
-  const profile = profiles ? profiles[0] : undefined;
-  const isLoading = profiles === undefined;
+  const profile = useLiveQuery(() => db.storeProfile.get(1));
+  const isLoading = profile === undefined;
 
   const saveProfile = async (data: Partial<StoreProfile>) => {
     const existing = await db.storeProfile.get(1);
