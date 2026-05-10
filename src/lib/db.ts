@@ -34,6 +34,8 @@ export interface Product {
   category: string;
   supplierId?: string;
   image?: Blob | null;
+  trackStock: boolean; // Enable/disable stock tracking (useful for FNB)
+  isActive: boolean; // Enable/disable product (useful for FNB - marking sold out/ unavailable)
   createdAt: number;
 }
 
@@ -119,6 +121,10 @@ db.version(2).stores({
 
 db.version(4).stores({
   storeProfile: 'id', // spreadsheetId, isGoogleConnected, lastCloudSync added
+});
+
+db.version(5).stores({
+  products: 'id, sku, barcode, category, name, trackStock',
 });
 
 export default db;

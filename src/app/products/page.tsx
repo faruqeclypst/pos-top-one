@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ── Skeleton ──────────────────────────────────────────────
@@ -42,7 +43,8 @@ function ProductsSkeleton() {
 function ProductTableHeader() {
   return (
     <div className="flex items-center gap-2 lg:gap-4 px-4 lg:px-6 py-4 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.15em] border-b border-border/5">
-      <div className="hidden lg:block w-14 shrink-0"></div>
+      <div className="w-6 lg:w-8 shrink-0 text-center">#</div>
+      <div className="hidden lg:block w-14 shrink-0 text-center">Foto</div>
       <div className="flex-1 min-w-0">Produk</div>
       <div className="hidden lg:block w-32 shrink-0 text-left">Kategori</div>
       <div className="flex-1 lg:w-40 shrink-0 text-right pr-4 lg:pr-8">Harga & Stok</div>
@@ -52,21 +54,30 @@ function ProductTableHeader() {
 }
 
 // ── Product Bento Row ─────────────────────────────────────
-function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }: {
+function ProductBentoRow({ product, onEdit, onDelete, onRestock, onToggleActive, supplierName, index }: {
   product: Product;
   onEdit: (p: Product) => void;
   onDelete: (id: string) => void;
   onRestock: (p: Product) => void;
+  onToggleActive?: (id: string, isActive: boolean) => void;
   supplierName?: string;
+  index: number;
 }) {
   const [imageUrl] = useState(() => product.image ? URL.createObjectURL(product.image) : null);
   const stockStatus = product.stock <= 0 ? "error" : product.stock <= 5 ? "warning" : "success";
+  const isFNB = useStoreProfile()?.profile?.businessType === "FNB";
+  const trackStock = product.trackStock ?? true;
+  const isActive = product.isActive ?? true;
 
   return (
-    <Card className="group overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-1.5 rounded-2xl">
+    <Card className={cn("group overflow-hidden border-none shadow-sm transition-colors duration-200 mb-1.5 rounded-2xl", isActive ? "bg-card/40 hover:bg-card/60" : "bg-muted/20 opacity-60 hover:bg-muted/30")}>
       <div className="flex items-center gap-4 px-4 lg:px-6 py-4 h-auto lg:h-24">
+        {/* Box 0: Index */}
+        <div className="w-6 lg:w-8 shrink-0 text-center">
+          <span className="text-[8px] lg:text-[10px] font-black text-muted-foreground/40">{index + 1}</span>
+        </div>
         {/* Box 1: Image */}
-        <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-all group-hover:scale-105 shadow-inner shrink-0">
+        <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-colors duration-200 group-hover:scale-105 shadow-inner shrink-0">
           {imageUrl ? (
             <img src={imageUrl} alt={product.name} className="w-full h-full object-contain p-1" />
           ) : (
@@ -76,8 +87,20 @@ function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }:
 
         {/* Box 2: Name & Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-xs lg:text-sm font-black text-foreground truncate group-hover:text-primary transition-colors leading-tight">{product.name}</h3>
+          <h3 className={cn("text-xs lg:text-sm font-black truncate group-hover:text-primary transition-colors leading-tight", isActive ? "text-foreground" : "text-muted-foreground")}>{product.name}</h3>
           <p className="text-[8px] lg:text-[10px] font-mono text-muted-foreground/60 uppercase truncate tracking-wider">{product.sku || "NO-SKU"}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            {isFNB && !trackStock && (
+              <Badge variant="secondary" className="h-4 text-[8px] font-bold bg-amber-500/10 text-amber-600 border-none px-1.5 rounded-md">
+                Tanpa Stok
+              </Badge>
+            )}
+            {isFNB && !isActive && (
+              <Badge variant="secondary" className="h-4 text-[8px] font-bold bg-rose-500/10 text-rose-600 border-none px-1.5 rounded-md">
+                Habis
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Box 3: Category (Hidden on Mobile) */}
@@ -92,27 +115,50 @@ function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }:
           <p className="text-[10px] lg:text-sm font-black text-foreground tracking-tighter truncate">
             Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}
           </p>
-          <Badge 
-            variant={stockStatus === "error" ? "destructive" : stockStatus === "warning" ? "warning" : "success"} 
-            className="h-5 lg:h-6 font-black text-[8px] lg:text-[10px] px-1.5 lg:px-3 shadow-sm border-none rounded-lg"
-          >
-            {product.stock <= 0 ? "0" : product.stock} {product.unit || "Pcs"}
-          </Badge>
+          {trackStock ? (
+            <Badge 
+              variant={stockStatus === "error" ? "warning" : stockStatus === "warning" ? "warning" : "success"} 
+              className="h-5 lg:h-6 font-black text-[8px] lg:text-[10px] px-1.5 lg:px-3 shadow-sm border-none rounded-lg"
+            >
+              {product.stock <= 0 ? "Habis" : `${product.stock} ${product.unit || "Pcs"}`}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="h-5 lg:h-6 font-black text-[8px] lg:text-[10px] px-1.5 lg:px-3 border-muted-foreground/20 text-muted-foreground bg-muted/10 rounded-lg">
+              Tidak Terbatas
+            </Badge>
+          )}
         </div>
 
         {/* Box 6: Actions */}
-        <div className="w-24 lg:w-36 shrink-0 flex items-center justify-end gap-1 lg:gap-2.5">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onRestock(product); }}
-            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-500 hover:text-white text-emerald-600 transition-all shadow-sm"
-            title="Tambah Stok"
-          >
-            <ArrowDownCircle className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
-          </button>
+        <div className="w-32 lg:w-44 shrink-0 flex items-center justify-end gap-1 lg:gap-2.5">
+          {/* Toggle Habis/Aktif - FNB only */}
+          {isFNB && onToggleActive && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onToggleActive(product.id, !isActive); }}
+              className={cn("w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center transition-colors duration-200", isActive ? "bg-emerald-500/10 hover:bg-emerald-500 hover:text-white text-emerald-600" : "bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-600")}
+              title={isActive ? "Tandai Habis" : "Tandai Aktif"}
+            >
+              {isActive ? (
+                <CheckCircle2 className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
+              ) : (
+                <X className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
+              )}
+            </button>
+          )}
+
+          {trackStock && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onRestock(product); }}
+              className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-500 hover:text-white text-emerald-600 transition-colors duration-200"
+              title="Tambah Stok"
+            >
+              <ArrowDownCircle className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
+            </button>
+          )}
           
           <button 
             onClick={(e) => { e.stopPropagation(); onEdit(product); }}
-            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-blue-500/10 flex items-center justify-center hover:bg-blue-500 hover:text-white text-blue-600 transition-all shadow-sm"
+            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-blue-500/10 flex items-center justify-center hover:bg-blue-500 hover:text-white text-blue-600 transition-colors duration-200"
             title="Edit Produk"
           >
             <Edit2 className="w-3.5 h-3.5" />
@@ -120,7 +166,7 @@ function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }:
 
           <button 
             onClick={(e) => { e.stopPropagation(); onDelete(product.id); }}
-            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-rose-500/10 flex items-center justify-center hover:bg-rose-500 hover:text-white text-rose-600 transition-all shadow-sm"
+            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-rose-500/10 flex items-center justify-center hover:bg-rose-500 hover:text-white text-rose-600 transition-colors duration-200"
             title="Hapus Produk"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -184,7 +230,9 @@ export default function ProductsPage() {
     sellingPrice: 0,
     stock: 0,
     unit: "Pcs",
-    image: null as Blob | null
+    image: null as Blob | null,
+    trackStock: true,
+    isActive: true
   });
 
   const stopScanner = useCallback(async () => {
@@ -277,7 +325,9 @@ export default function ProductsPage() {
         sellingPrice: p.sellingPrice,
         stock: p.stock,
         unit: p.unit,
-        image: p.image || null
+        image: p.image || null,
+        trackStock: p.trackStock ?? true,
+        isActive: p.isActive ?? true
       });
     } else {
       setEditingId(null);
@@ -288,7 +338,7 @@ export default function ProductsPage() {
       
       setFormData({
         name: "", sku: generatedSku, barcode: "", category: "", supplierId: "",
-        cogs: 0, sellingPrice: 0, stock: 0, unit: "Pcs", image: null
+        cogs: 0, sellingPrice: 0, stock: 0, unit: "Pcs", image: null, trackStock: true, isActive: true
       });
     }
     setIsFormOpen(true);
@@ -407,8 +457,8 @@ export default function ProductsPage() {
 
         {/* Bento Stats - 4 Columns */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 mb-8">
-          <Card className="p-6 border-none shadow-sm bg-blue-500/5 backdrop-blur-md relative overflow-hidden group hover:bg-blue-500/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 group-hover:rotate-12 transition-all">
+          <Card className="p-6 border-none shadow-sm bg-blue-500/5 hover:bg-blue-500/10 transition-colors duration-200 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 group-hover:rotate-12 transition-transform duration-200">
               <Package className="w-16 h-16 text-blue-500" />
             </div>
             <div className="relative z-10">
@@ -420,21 +470,21 @@ export default function ProductsPage() {
             </div>
           </Card>
 
-          <Card className="p-6 border-none shadow-sm bg-rose-500/5 backdrop-blur-md relative overflow-hidden group hover:bg-rose-500/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 group-hover:-rotate-12 transition-all">
-              <Info className="w-16 h-16 text-rose-500" />
+          <Card className="p-6 border-none shadow-sm bg-amber-500/5 hover:bg-amber-500/10 transition-colors duration-200 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 group-hover:-rotate-12 transition-transform duration-200">
+              <Info className="w-16 h-16 text-amber-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[10px] font-black text-rose-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
-              <h3 className="text-3xl font-black text-rose-600 tracking-tight">{outOfStockCount}</h3>
+              <p className="text-[10px] font-black text-amber-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
+              <h3 className="text-3xl font-black text-amber-600 tracking-tight">{outOfStockCount}</h3>
             </div>
             <div className="relative z-10 mt-auto">
-              <p className="text-[8px] font-bold text-rose-600/40 uppercase tracking-widest">Perlu perhatian segera</p>
+              <p className="text-[8px] font-bold text-amber-600/40 uppercase tracking-widest">Perlu perhatian segera</p>
             </div>
           </Card>
 
-          <Card className="p-6 border-none shadow-sm bg-emerald-500/5 backdrop-blur-md relative overflow-hidden group hover:bg-emerald-500/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-all">
+          <Card className="p-6 border-none shadow-sm bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors duration-200 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-200">
               <TrendingUp className="w-16 h-16 text-emerald-500" />
             </div>
             <div className="relative z-10">
@@ -446,8 +496,8 @@ export default function ProductsPage() {
             </div>
           </Card>
 
-          <Card className="p-6 border-none shadow-sm bg-primary/5 backdrop-blur-md relative overflow-hidden group hover:bg-primary/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-all">
+          <Card className="p-6 border-none shadow-sm bg-primary/5 hover:bg-primary/10 transition-colors duration-200 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-200">
               <Building2 className="w-16 h-16 text-primary" />
             </div>
             <div className="relative z-10">
@@ -499,9 +549,13 @@ export default function ProductsPage() {
                     <ProductBentoRow
                       key={p.id}
                       product={p}
+                      index={idx}
                       supplierName={suppliers?.find(s => s.id === p.supplierId)?.name}
                       onEdit={handleOpenForm}
                       onDelete={handleDelete}
+                      onToggleActive={profile?.businessType === "FNB" ? async (id, isActive) => {
+                        await db.products.update(id, { isActive });
+                      } : undefined}
                       onRestock={(prod) => {
                         setRestockProduct(prod);
                         setRestockData({ qty: 0, buyPrice: prod.cogs || 0 });
@@ -627,7 +681,7 @@ export default function ProductsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Harga Beli per {restockProduct.unit || "Pcs"}</label>
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Harga Beli / Modal per {restockProduct.unit || "Pcs"}</label>
                     <Input
                       type="text"
                       inputMode="numeric"
@@ -717,80 +771,97 @@ export default function ProductsPage() {
 
       {/* ── Form Modal ── */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-[110] bg-background flex flex-col animate-in slide-in-from-bottom duration-300">
-          <div className="flex items-center justify-between px-5 pt-10 pb-4 border-b border-border/50 bg-background/95 sticky top-0 z-10 backdrop-blur-md">
+        <div className="fixed inset-0 z-[110] bg-background/95 backdrop-blur-sm flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => setIsFormOpen(false)} className="rounded-full">
+              <Button variant="ghost" size="icon" onClick={() => setIsFormOpen(false)} className="rounded-full -ml-2">
                 <X className="w-5 h-5" />
               </Button>
-              <h2 className="text-lg font-bold text-foreground">
-                {editingId ? "Ubah Detail Produk" : "Tambah Produk Baru"}
+              <h2 className="text-base font-bold text-foreground">
+                {editingId ? "Edit" : "Baru"}
               </h2>
             </div>
-            <Button onClick={handleSave} className="h-10 rounded-xl gradient-primary text-white font-bold text-xs tracking-wider px-6">
+            <Button onClick={handleSave} className="h-9 rounded-lg gradient-primary text-white font-bold text-xs px-4">
               SIMPAN
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto scroll-area px-5 py-6 space-y-8 max-w-2xl mx-auto w-full pb-32">
-            {/* Image Section */}
-            <div className="space-y-3">
-              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Foto Produk</p>
+          <div className="flex-1 overflow-y-auto px-4 py-4 w-full max-w-5xl mx-auto">
+            {/* Image - Full width on mobile, center on desktop */}
+            <div className="flex justify-center mb-4 lg:mb-6">
               <ImageUploader 
                 initialBlob={formData.image as Blob | undefined} 
                 onChange={(blob) => setFormData({ ...formData, image: blob })} 
               />
             </div>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Informasi Dasar</p>
-                <div className="space-y-4">
-                  <div className="space-y-1.5 flex-1">
-                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Nama Produk</p>
+            {/* Desktop 3-column layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              
+              {/* Column 1: Basic Info */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Informasi</h3>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground ml-1">NAMA</label>
+                  <Input
+                    className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm"
+                    placeholder="Nama produk..."
+                    value={formData.name ?? ""}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground ml-1">SKU</label>
                     <Input
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none font-bold"
-                      placeholder="Masukkan nama produk..."
-                      value={formData.name ?? ""}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm"
+                      placeholder="SKU"
+                      value={formData.sku ?? ""}
+                      onChange={e => setFormData({ ...formData, sku: e.target.value })}
                     />
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">SKU / Kode Barang</p>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground ml-1">BARCODE</label>
+                    <div className="flex gap-2">
                       <Input
-                        className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                        placeholder="BRS-001"
-                        value={formData.sku ?? ""}
-                        onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                        className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm flex-1"
+                        placeholder="Scan..."
+                        value={formData.barcode ?? ""}
+                        onChange={e => setFormData({ ...formData, barcode: e.target.value })}
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Barcode (Opsional)</p>
-                      <div className="flex gap-2">
-                        <Input
-                          className="h-12 px-4 rounded-xl bg-muted/30 border-none flex-1"
-                          placeholder="Scan atau ketik..."
-                          value={formData.barcode ?? ""}
-                          onChange={e => setFormData({ ...formData, barcode: e.target.value })}
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-12 w-12 rounded-xl bg-muted/30 border-none shrink-0"
-                          onClick={() => setIsScannerOpen(true)}
-                        >
-                          <ScanLine className="w-5 h-5" />
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 rounded-lg bg-muted/40 border-none shrink-0"
+                        onClick={() => setIsScannerOpen(true)}
+                      >
+                        <ScanLine className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <p className="text-[0.625rem] font-bold text-foreground/60 ml-1">Satuan</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground ml-1">KATEGORI</label>
+                    <select
+                      className="w-full h-10 px-3 rounded-lg bg-muted/40 border-none text-sm outline-none cursor-pointer"
+                      value={formData.category ?? ""}
+                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    >
+                      <option value="">Pilih</option>
+                      {categories?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground ml-1">SATUAN</label>
                     <Input
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      placeholder="Pcs, Kg, Box..."
+                      className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm"
+                      placeholder="Pcs..."
                       value={formData.unit ?? ""}
                       onChange={e => setFormData({ ...formData, unit: e.target.value })}
                     />
@@ -798,79 +869,124 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">
-                  {profile?.businessType === "FNB" ? "Kategori" : "Kategori & Pemasok"}
-                </p>
-                <div className={cn("grid grid-cols-1 gap-4", profile?.businessType === "FNB" ? "" : "sm:grid-cols-2")}>
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Kategori</p>
-                    <select
-                      className="w-full h-12 px-4 rounded-xl bg-muted/30 border-none text-sm outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                      value={formData.category ?? "Umum"}
-                      onChange={e => setFormData({ ...formData, category: e.target.value })}
-                    >
-                      <option value="">Pilih Kategori</option>
-                      {categories?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  {profile?.businessType !== "FNB" && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-bold text-foreground/60 ml-1">Pemasok</p>
-                      <select
-                        className="w-full h-12 px-4 rounded-xl bg-muted/30 border-none outline-none text-sm appearance-none"
-                        value={formData.supplierId}
-                        onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
-                      >
-                        <option value="">Pilih Pemasok</option>
-                        {suppliers?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
+              {/* Column 2: Prices */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Harga</h3>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground ml-1">BELI / MODAL (Rp)</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm"
+                    placeholder="0"
+                    value={formData.cogs ? formData.cogs.toLocaleString("id-ID") : ""}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      setFormData({ ...formData, cogs: val ? Number(val) : 0 });
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground ml-1">JUAL (Rp)</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm font-bold text-primary"
+                    placeholder="0"
+                    value={formData.sellingPrice ? formData.sellingPrice.toLocaleString("id-ID") : ""}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      setFormData({ ...formData, sellingPrice: val ? Number(val) : 0 });
+                    }}
+                  />
+                </div>
+
+                {/* Track Stock Toggle - FNB only */}
+                {profile?.businessType === "FNB" && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/20">
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-foreground">Tracking Stok</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formData.trackStock ? "Stok akan berkurang" : "Stok tidak berkurang"}
+                      </p>
                     </div>
-                  )}
+                    <Switch
+                      checked={formData.trackStock}
+                      onCheckedChange={(checked) => setFormData({ ...formData, trackStock: checked })}
+                    />
+                  </div>
+                )}
+
+                {/* Habis/Aktif Toggle - FNB only */}
+                {profile?.businessType === "FNB" && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/20">
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-foreground">Tandai Habis</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formData.isActive ? "Produk bisa dipesan" : "Produk tidak bisa dipesan"}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.isActive}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Column 3: Stock */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Stok</h3>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-muted-foreground ml-1">STOK SAAT INI</label>
+                  <Input
+                    type="number"
+                    className="h-10 px-3 rounded-lg bg-muted/40 border-none text-sm"
+                    placeholder="0"
+                    value={formData.stock || ""}
+                    onChange={e => setFormData({ ...formData, stock: e.target.value === "" ? 0 : Number(e.target.value) })}
+                    disabled={profile?.businessType === "FNB" && !formData.trackStock}
+                  />
+                </div>
+
+                {/* Quick stock actions */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg text-xs"
+                    onClick={() => setFormData({ ...formData, stock: formData.stock + 1 })}
+                  >
+                    + Tambah
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg text-xs"
+                    onClick={() => setFormData({ ...formData, stock: Math.max(0, formData.stock - 1) })}
+                    disabled={formData.stock <= 0}
+                  >
+                    - Kurang
+                  </Button>
+                </div>
+
+                {/* Stock info */}
+                <div className="p-3 rounded-lg bg-muted/30 border border-border/10">
+                  <p className="text-[10px] text-muted-foreground">
+                    {formData.stock > 0 
+                      ? `${formData.stock} ${formData.unit || 'item'} tersedia`
+                      : 'Stok kosong'
+                    }
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Harga & Stok</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Harga Beli (Rp)</p>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      value={formData.cogs ? formData.cogs.toLocaleString("id-ID") : ""}
-                      onChange={e => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setFormData({ ...formData, cogs: val ? Number(val) : 0 });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Harga Jual (Rp)</p>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none text-primary font-bold"
-                      value={formData.sellingPrice ? formData.sellingPrice.toLocaleString("id-ID") : ""}
-                      onChange={e => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setFormData({ ...formData, sellingPrice: val ? Number(val) : 0 });
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Stok Saat Ini</p>
-                    <Input
-                      type="number"
-                      className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      value={formData.stock || ""}
-                      onChange={e => setFormData({ ...formData, stock: e.target.value === "" ? 0 : Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
+
+            <div className="h-4" />
           </div>
         </div>
       )}

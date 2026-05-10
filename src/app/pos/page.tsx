@@ -48,7 +48,12 @@ function POSSkeleton() {
 
 function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product) => void }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const outOfStock = product.stock <= 0;
+  const trackStock = product.trackStock ?? true;
+  const isActive = product.isActive ?? true;
+  const outOfStock = trackStock && product.stock <= 0;
+  const { profile } = useStoreProfile();
+  const isFnB = profile?.businessType === "FNB";
+  const isUnavailable = isFnB && !isActive;
 
   useEffect(() => {
     if (product.image) {
@@ -60,10 +65,10 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
 
   return (
     <Card
-      onClick={() => !outOfStock && onAdd(product)}
+      onClick={() => !outOfStock && !isUnavailable && onAdd(product)}
       className={cn(
-        "relative flex flex-col rounded-2xl overflow-hidden text-left transition-all duration-200 cursor-pointer group border border-transparent shadow-sm bg-card hover:bg-muted/30 hover:border-primary/20 hover:shadow-md",
-        outOfStock && "opacity-50 grayscale pointer-events-none"
+        "relative flex flex-col rounded-2xl overflow-hidden text-left transition-all duration-200 cursor-pointer group border shadow-sm",
+        outOfStock || isUnavailable ? "border-border opacity-50 pointer-events-none" : "border-transparent bg-card hover:bg-muted/30 hover:border-primary/20 hover:shadow-md"
       )}
     >
       {/* Top Image Area (More compact aspect) */}
@@ -74,12 +79,16 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
             alt={product.name} 
             className="w-full h-full object-contain p-3 transition-opacity duration-300" 
           />
+        ) : isFnB ? (
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <Utensils className="w-6 h-6" />
+          </div>
         ) : (
           <Package className="w-10 h-10 text-muted-foreground/10 transition-opacity duration-300" />
         )}
-        {outOfStock && (
+        {(outOfStock || isUnavailable) && (
           <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] flex items-center justify-center">
-            <Badge variant="destructive" className="font-bold text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full">Habis</Badge>
+            <Badge variant="destructive" className="font-bold text-[12px] uppercase tracking-widest px-2 py-0.5 rounded-full">Habis</Badge>
           </div>
         )}
       </div>
@@ -92,12 +101,15 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
         <p className="text-[0.8125rem] font-black text-primary tracking-tight">
           Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}
         </p>
-        <p className="text-[0.5625rem] font-bold text-muted-foreground uppercase tracking-tighter mt-0.5 opacity-60">
-          {product.stock} {product.unit}
+        <p className={cn(
+          "text-[0.5625rem] font-bold uppercase tracking-tighter mt-0.5 opacity-60",
+          !trackStock && "text-amber-600"
+        )}>
+          {isUnavailable ? "Habis" : (trackStock ? `${product.stock} ${product.unit}` : "Tanpa Batas Stok")}
         </p>
 
         {/* Floating Add Button (Compact size) */}
-        {!outOfStock && (
+        {!outOfStock && !isUnavailable && (
           <div className="absolute right-2 bottom-2.5 w-7 h-7 rounded-lg gradient-primary text-white flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-110 active:scale-90 transition-all duration-300">
             <Plus className="w-4 h-4" />
           </div>
@@ -120,7 +132,7 @@ function CartRow({ item, onUpdate, isCompact = false }: { item: CartItem; onUpda
   }, [item.image]);
 
   return (
-    <div className={cn("flex items-center gap-4 py-4 border-b border-border/10 last:border-0", isCompact && "py-3")}>
+    <div className={cn("flex items-center gap-3 py-2.5 border-b border-border/10 last:border-0", isCompact && "py-2")}>
       <div className="w-14 h-14 rounded-xl bg-muted/30 overflow-hidden shrink-0 border border-border/10 relative">
         {imageUrl ? (
           <img src={imageUrl} alt={item.name} className="w-full h-full object-contain p-1" />
@@ -145,23 +157,23 @@ function CartRow({ item, onUpdate, isCompact = false }: { item: CartItem; onUpda
             Rp {((item.sellingPrice || 0) * item.cartQty).toLocaleString("id-ID")}
           </p>
         )}
-        <div className="flex items-center gap-2 bg-muted/40 rounded-xl p-1 border border-border/10">
+        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-0.5 border border-border/10">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onUpdate(item.id, -1)}
-            className="h-8 w-8 rounded-lg bg-background hover:bg-muted text-foreground border border-border/20 shadow-sm"
+            className="h-6 w-6 rounded-md bg-background hover:bg-muted text-foreground border border-border/20"
           >
-            {item.cartQty === 1 ? <Trash2 className="w-4 h-4 text-destructive" /> : <Minus className="w-4 h-4" />}
+            {item.cartQty === 1 ? <Trash2 className="w-3 h-3 text-destructive" /> : <Minus className="w-3 h-3" />}
           </Button>
-          <span className="w-8 text-center text-sm font-black text-foreground">{item.cartQty}</span>
+          <span className="w-6 text-center text-[11px] font-black text-foreground">{item.cartQty}</span>
           <Button
             variant="default"
             size="icon"
             onClick={() => onUpdate(item.id, 1)}
-            className="h-8 w-8 rounded-lg shadow-sm"
+            className="h-6 w-6 rounded-md shadow-sm"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3 h-3" />
           </Button>
         </div>
       </div>
@@ -212,6 +224,11 @@ export default function POSPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScanTimeRef = useRef<number>(0);
   const [cashTendered, setCashTendered] = useState<number>(0);
+  const [isTableActive, setIsTableActive] = useState(false); // Track if table is actively being used
+  const [activeTableSnapshot, setActiveTableSnapshot] = useState<{ name: string; total: number; items: string[] } | null>(null);
+  const [isBillSavedOpen, setIsBillSavedOpen] = useState(false);
+  const [billSavedInfo, setBillSavedInfo] = useState<{ table?: string }>({});
+  const [dragSource, setDragSource] = useState<string | null>(null);
 
   const confirm = useConfirm();
 
@@ -287,13 +304,29 @@ export default function POSPage() {
       (p.barcode?.toLowerCase() || "").includes(search.toLowerCase());
     const matchesCategory = selectedCategory === "Semua" || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
+  }).sort((a, b) => {
+    // FNB: inactive products (Habis) at bottom
+    if (profile?.businessType === "FNB") {
+      const aInactive = !(a.isActive ?? true);
+      const bInactive = !(b.isActive ?? true);
+      if (aInactive && !bInactive) return 1;
+      if (!aInactive && bInactive) return -1;
+    }
+    // Sort out of stock to bottom for non-FNB
+    const aOut = (a.trackStock ?? true) && a.stock <= 0;
+    const bOut = (b.trackStock ?? true) && b.stock <= 0;
+    if (aOut && !bOut) return 1;
+    if (!aOut && bOut) return -1;
+    return 0;
   });
 
   const addToCart = useCallback((product: Product) => {
+    const trackStock = product.trackStock ?? true;
     setCart(prev => {
       const existing = prev.find(i => i.id === product.id);
       if (existing) {
-        if (existing.cartQty >= product.stock) return prev;
+        // For products with stock tracking, limit by available stock
+        if (trackStock && existing.cartQty >= product.stock) return prev;
         return prev.map(i => i.id === product.id ? { ...i, cartQty: i.cartQty + 1 } : i);
       }
       return [...prev, { ...product, cartQty: 1 }];
@@ -302,16 +335,38 @@ export default function POSPage() {
 
   const updateCartQty = useCallback((id: string, delta: number) => {
     setCart(prev => prev
-      .map(i => i.id === id ? { ...i, cartQty: Math.min(i.cartQty + delta, i.stock) } : i)
+      .map(i => {
+        const trackStock = i.trackStock ?? true;
+        // For products with stock tracking, limit by available stock
+        if (trackStock) {
+          return { ...i, cartQty: Math.min(i.cartQty + delta, i.stock) };
+        }
+        // For products without stock tracking, allow unlimited qty
+        return { ...i, cartQty: Math.max(i.cartQty + delta, 1) };
+      })
       .filter(i => i.cartQty > 0)
     );
   }, []);
 
   const totalItems = useMemo(() => cart.reduce((s, i) => s + i.cartQty, 0), [cart]);
   const totalPrice = useMemo(() => cart.reduce((s, i) => s + (i.sellingPrice || 0) * i.cartQty, 0), [cart]);
+  const isFnBIncomplete = useMemo(() => {
+    if (profile?.businessType !== "FNB") return false;
+    if (!customerName) return true;
+    if (orderType === "DINE_IN" && profile?.useTable && !tableNumber) return true;
+    return false;
+  }, [profile, customerName, orderType, tableNumber]);
 
   const handleCheckout = async () => {
     if (cart.length === 0 || isProcessing) return;
+    
+    // Validation for FNB DINE_IN - must select table
+    if (profile?.businessType === "FNB" && orderType === "DINE_IN" && profile?.useTable && !tableNumber) {
+      alert("Silakan pilih nomor meja terlebih dahulu!");
+      setActiveTab("MEJA");
+      return;
+    }
+    
     setIsProcessing(true);
     try {
       const txId = `TRX-${Date.now()}`;
@@ -339,14 +394,19 @@ export default function POSPage() {
             priceAtTransaction: item.sellingPrice || 0, 
             subtotal: (item.sellingPrice || 0) * item.cartQty
           });
-          await db.products.update(item.id, { stock: item.stock - item.cartQty });
-          await db.stockMutations.put({ 
-            productId: item.id, 
-            type: "OUT", 
-            quantity: item.cartQty, 
-            referenceId: txId, 
-            createdAt: Date.now() 
-          });
+          
+          // Only reduce stock for products with trackStock enabled
+          const trackStock = item.trackStock ?? true;
+          if (trackStock) {
+            await db.products.update(item.id, { stock: item.stock - item.cartQty });
+            await db.stockMutations.put({ 
+              productId: item.id, 
+              type: "OUT", 
+              quantity: item.cartQty, 
+              referenceId: txId, 
+              createdAt: Date.now() 
+            });
+          }
         }
 
         // If this was a restored bill, delete the draft now that it's paid
@@ -359,6 +419,16 @@ export default function POSPage() {
       setLastTxId(txId);
       setIsCheckoutOpen(false);
       setIsCartOpen(false);
+      
+      // Save snapshot for active table display
+      if (profile?.businessType === "FNB" && orderType === "DINE_IN" && tableNumber) {
+        setActiveTableSnapshot({
+          name: customerName || "Tamu Reguler",
+          total: totalPrice,
+          items: cart.map(i => i.name)
+        });
+      }
+      
       setIsSuccessOpen(true);
       
       // Auto-sync
@@ -385,6 +455,14 @@ export default function POSPage() {
 
   const handleSaveOpenBill = async () => {
     if (cart.length === 0) return;
+    
+    // Validation for FNB DINE_IN - must select table
+    if (profile?.businessType === "FNB" && orderType === "DINE_IN" && profile?.useTable && !tableNumber) {
+      alert("Silakan pilih nomor meja terlebih dahulu!");
+      setActiveTab("MEJA");
+      return;
+    }
+    
     try {
       const txId = activeBillId || `OPEN-${Date.now()}`;
       
@@ -415,7 +493,10 @@ export default function POSPage() {
         }
       });
       
-      alert("Bill berhasil disimpan!");
+      setBillSavedInfo({
+        table: profile?.businessType === "FNB" && tableNumber ? tableNumber : undefined
+      });
+      setIsBillSavedOpen(true);
       setCart([]);
       setCustomerName("");
       setCustomerPhone("");
@@ -468,17 +549,60 @@ export default function POSPage() {
   };
 
   const handleTableClick = (tableNum: string) => {
+    // Clicking same active table — stay on table grid
+    if (tableNum === tableNumber) {
+      return;
+    }
+    
     const bill = openBills?.find(b => b.tableNumber === tableNum);
     if (bill) {
       handleRestoreBill(bill);
+      setIsTableActive(true);
     } else {
       setTableNumber(tableNum);
+      setOrderType("DINE_IN");
+      setIsTableActive(true);
       if (!activeBillId && cart.length === 0) {
-        // Start fresh for new table
         setCustomerName("");
       }
     }
     setActiveTab("MENU");
+  };
+
+  // Drag bill from occupied table to another table
+  const handleTableDrop = useCallback((targetNum: string) => {
+    const sourceNum = dragSource;
+    if (!sourceNum || sourceNum === targetNum) {
+      setDragSource(null);
+      return;
+    }
+    
+    const sourceBill = openBills?.find(b => b.tableNumber === sourceNum);
+    if (!sourceBill) {
+      setDragSource(null);
+      return;
+    }
+    
+    db.transactions.update(sourceBill.id, { tableNumber: targetNum });
+    
+    // If dragging active table, update local table number too
+    if (tableNumber === sourceNum) {
+      setTableNumber(targetNum);
+    }
+    
+    setDragSource(null);
+  }, [dragSource, openBills, tableNumber]);
+
+  // Handle order type change
+  const handleOrderTypeChange = (type: "DINE_IN" | "TAKEAWAY") => {
+    if (type === "DINE_IN") {
+      setOrderType("DINE_IN");
+      setActiveTab("MEJA");
+    } else {
+      setOrderType("TAKEAWAY");
+      setTableNumber("");
+      setIsTableActive(false);
+    }
   };
 
   const handleClearCart = async () => {
@@ -493,6 +617,7 @@ export default function POSPage() {
       setCustomerName("");
       setCustomerPhone("");
       setTableNumber("");
+      setOrderType("DINE_IN"); // Reset to default
       setActiveBillId(null);
     }
   };
@@ -572,6 +697,59 @@ export default function POSPage() {
                   selectedCategory={selectedCategory} 
                   onSelect={setSelectedCategory} 
                 />
+
+                {/* Quick Table Selection for DINE_IN */}
+                {profile?.businessType === "FNB" && orderType === "DINE_IN" && profile?.useTable && !tableNumber && (
+                  <div 
+                    onClick={() => setActiveTab("MEJA")}
+                    className="flex items-center gap-3 p-3 bg-card border border-primary/30 rounded-xl cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Utensils className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-foreground">Pilih Meja Dulu</p>
+                      <p className="text-[10px] text-muted-foreground">Klik untuk memilih nomor meja</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+
+                {/* Active Table Indicator */}
+                {profile?.businessType === "FNB" && orderType === "DINE_IN" && profile?.useTable && tableNumber && (
+                  <button
+                    onClick={() => setActiveTab("MEJA")}
+                    className="w-full flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl hover:bg-primary/10 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-lg font-black text-primary">{tableNumber}</span>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-xs font-bold text-primary">Meja {tableNumber}</p>
+                      <p className="text-[10px] text-muted-foreground">Dine In - Aktif</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-primary" />
+                  </button>
+                )}
+
+                {/* Takeaway Indicator */}
+                {profile?.businessType === "FNB" && orderType === "TAKEAWAY" && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/40 border border-border/50 rounded-xl">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                      <Package className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-foreground">Takeaway</p>
+                      <p className="text-[10px] text-muted-foreground">Pesanan untuk dibawa pulang</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab("MEJA")}
+                      className="text-[10px] font-bold text-primary hover:underline px-2 py-1"
+                    >
+                      Ganti ke Dine In
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -597,10 +775,10 @@ export default function POSPage() {
                 {Array.from({ length: 20 }, (_, i) => {
                   const num = (i + 1).toString();
                   const bill = openBills?.find(b => b.tableNumber === num);
-                  const isOccupied = !!bill;
                   const isActive = num === tableNumber;
+                  const isOccupied = !!bill || isActive;
                   
-                  const elapsedMinutes = isOccupied ? Math.floor((Date.now() - bill.date) / 60000) : 0;
+                  const elapsedMinutes = isOccupied && bill ? Math.floor((Date.now() - bill.date) / 60000) : 0;
                   const timeString = elapsedMinutes > 60 ? `${Math.floor(elapsedMinutes / 60)}j ${elapsedMinutes % 60}m` : `${elapsedMinutes}m`;
 
                   // Get items for this bill to show a summary preview
@@ -611,13 +789,19 @@ export default function POSPage() {
                   return (
                     <div
                       key={num}
+                      draggable={isOccupied}
+                      onDragStart={(e) => { setDragSource(num); e.dataTransfer.effectAllowed = 'move'; }}
+                      onDragEnd={() => setDragSource(null)}
+                      onDragOver={(e) => { if (isOccupied || isActive) return; e.preventDefault(); }}
+                      onDrop={(e) => { e.preventDefault(); handleTableDrop(num); }}
                       onClick={() => handleTableClick(num)}
                       className={cn(
                         "relative flex flex-col p-4 rounded-xl cursor-pointer transition-all duration-200 border-2",
                         isOccupied
                           ? "bg-primary/10 border-primary/30 hover:border-primary/50 shadow-sm"
                           : "bg-background border-border border-dashed hover:border-primary/40 hover:bg-primary/5",
-                        isActive && "border-solid border-primary bg-primary/15 shadow-md scale-[1.02]"
+                        isActive && "border-solid border-primary bg-primary/15 shadow-md scale-[1.02]",
+                        dragSource === num && "opacity-50"
                       )}
                     >
                       {/* Top Header */}
@@ -657,23 +841,23 @@ export default function POSPage() {
                         <div className="mt-auto space-y-2">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80 bg-background/50 p-1.5 rounded-md">
                             <User className="w-3.5 h-3.5 text-primary opacity-70 shrink-0" />
-                            <span className="truncate">{bill?.customerName || "Tamu Reguler"}</span>
+                            <span className="truncate">{bill?.customerName || (isActive ? activeTableSnapshot?.name : "Tamu Reguler") || "Tamu Reguler"}</span>
                           </div>
                           
                           {/* First Item Summary Preview */}
-                          {firstItemProduct && (
+                          {(firstItemProduct || (isActive && activeTableSnapshot !== null)) && (
                             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-medium px-1 truncate">
                               <Package className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{firstItemProduct.name}</span>
-                              {itemsForBill.length > 1 && (
-                                <span className="shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md">+{itemsForBill.length - 1}</span>
+                              <span className="truncate">{firstItemProduct?.name || (isActive && activeTableSnapshot ? activeTableSnapshot.items[0] : "")}</span>
+                              {(isActive && activeTableSnapshot ? activeTableSnapshot.items.length > 1 : itemsForBill.length > 1) && (
+                                <span className="shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md">+{(isActive && activeTableSnapshot ? activeTableSnapshot.items.length : itemsForBill.length) - 1}</span>
                               )}
                             </div>
                           )}
 
                           <div className="flex items-center justify-between pt-2 border-t border-primary/20">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tagihan</span>
-                            <span className="text-sm font-black text-primary">Rp {(bill?.total || 0).toLocaleString("id-ID")}</span>
+                            <span className="text-sm font-black text-primary">Rp {(bill?.total || (isActive ? activeTableSnapshot?.total : 0) || 0).toLocaleString("id-ID")}</span>
                           </div>
                         </div>
                       ) : (
@@ -695,7 +879,7 @@ export default function POSPage() {
         </div>
 
         {/* ── Right Side: Sidebar Cart (Desktop Only) ── */}
-      <div className="hidden lg:flex flex-col w-[420px] border-l border-border bg-card/30 backdrop-blur-md">
+      <div className="hidden lg:flex flex-col w-[420px] border-l border-border bg-card/30 h-full">
         {/* Sidebar Header */}
         <div className="p-5 border-b border-border/50">
           <div className="flex items-center justify-between mb-4">
@@ -725,7 +909,7 @@ export default function POSPage() {
           </div>
 
           {!isCheckoutOpen && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <input
@@ -735,175 +919,182 @@ export default function POSPage() {
                   onChange={e => setCustomerName(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2">
-                {profile?.usePhoneNumber && (
-                  <div className="relative flex-1">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <input
-                      className="w-full h-9 pl-8 pr-3 bg-muted/40 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/30"
-                      placeholder="No. HP / WA"
-                      type="tel"
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
-                    />
-                  </div>
-                )}
-                {profile?.useTable && (
-                  <input
-                    className="w-16 h-9 px-2 bg-muted/40 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/30 text-center"
-                    placeholder="Meja"
-                    value={tableNumber}
-                    onChange={e => setTableNumber(e.target.value)}
-                  />
-                )}
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  className="w-full h-9 pl-8 pr-3 bg-muted/40 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/30"
+                  placeholder="No. HP / WA"
+                  type="tel"
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value)}
+                />
               </div>
+              
+              {/* FNB Order Type Toggle */}
               {profile?.businessType === "FNB" && (
                 <div className="grid grid-cols-2 gap-2 p-1 bg-muted/40 rounded-xl">
                   <button
-                    onClick={() => setOrderType("DINE_IN")}
+                    type="button"
+                    onClick={() => { 
+                      if (orderType !== "DINE_IN") {
+                        setOrderType("DINE_IN");
+                        setTableNumber("");
+                        setIsTableActive(false);
+                      }
+                      if (!tableNumber) setActiveTab("MEJA"); 
+                    }}
                     className={cn(
-                      "py-2 text-[10px] font-bold rounded-lg transition-all",
-                      orderType === "DINE_IN" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted"
+                      "py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                      orderType === "DINE_IN" && tableNumber ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted"
                     )}
                   >
-                    Dine In
+                    {orderType === "DINE_IN" && tableNumber ? (
+                      <><Utensils className="w-3 h-3" /> Meja {tableNumber}</>
+                    ) : (
+                      <><Utensils className="w-3.5 h-3.5" /> Dine In</>
+                    )}
                   </button>
                   <button
-                    onClick={() => setOrderType("TAKEAWAY")}
+                    type="button"
+                    onClick={() => handleOrderTypeChange("TAKEAWAY")}
                     className={cn(
-                      "py-2 text-[10px] font-bold rounded-lg transition-all",
+                      "py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
                       orderType === "TAKEAWAY" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted"
                     )}
                   >
+                    <Package className="w-3.5 h-3.5" />
                     Takeaway
                   </button>
                 </div>
               )}
+
+              {/* Non-FNB table input */}
+              {!profile?.businessType && profile?.useTable && (
+                <input
+                  className="w-full h-9 px-3 bg-muted/40 rounded-lg text-xs outline-none focus:ring-1 focus:ring-primary/30 text-center"
+                  placeholder="Meja"
+                  value={tableNumber}
+                  onChange={e => setTableNumber(e.target.value)}
+                />
+              )}
+
             </div>
           )}
         </div>
 
         {/* Sidebar Items / Checkout Content */}
-        <div className="flex-1 overflow-y-auto scroll-area px-5 py-2">
+        <div className="flex-1 overflow-y-auto scroll-area px-5 py-2 flex flex-col">
           {isCheckoutOpen ? (
             <div className="space-y-6 py-4">
-              <div className="text-center py-2">
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Total Tagihan</p>
-                <p className="text-3xl font-black text-foreground tracking-tight mt-1">
-                  Rp {totalPrice.toLocaleString("id-ID")}
-                </p>
-                <p className="text-[0.625rem] text-muted-foreground mt-1">{totalItems} barang</p>
-              </div>
-
               <div className="space-y-3">
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Metode Pembayaran</p>
-                <div className="grid grid-cols-3 gap-2">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Metode Pembayaran</p>
+                <div className="grid grid-cols-3 gap-3">
                   {PAYMENT_METHODS.map(m => (
                     <button
                       key={m.id}
                       onClick={() => setPaymentMethod(m.id)}
                       className={cn(
-                        "flex flex-col items-center gap-2 p-2 rounded-xl border-2 transition-all duration-150 text-center",
-                        paymentMethod === m.id ? "border-primary bg-primary/5" : "border-border bg-card"
+                        "flex flex-col items-center gap-3 py-4 rounded-2xl border-2 transition-all duration-150 text-center",
+                        paymentMethod === m.id ? "border-primary bg-primary/5 shadow-md" : "border-border/50 bg-card hover:border-muted-foreground/30"
                       )}
                     >
-                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border", m.color)}>
-                        <m.icon className="w-4 h-4" />
+                      <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center border-2", m.color)}>
+                        <m.icon className="w-5 h-5" />
                       </div>
-                      <p className="font-bold text-[9px] text-foreground leading-tight">{m.label}</p>
+                      <div>
+                        <p className="font-black text-sm text-foreground">{m.label}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
               {paymentMethod === "CASH" && (
-                <div className="space-y-3">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Nominal Uang</p>
+                <div className="space-y-4">
+                  <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Nominal Uang</p>
                   <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
                     {[1000, 2000, 5000, 10000, 20000, 50000, 100000].map(val => (
                       <button
                         key={val}
                         onClick={() => setCashTendered(prev => prev + val)}
-                        className="h-10 rounded-xl border border-border bg-card text-[11px] font-bold hover:bg-muted active:scale-95 transition-all flex items-center justify-center"
+                        className="h-12 rounded-2xl border border-border bg-card text-sm font-bold hover:bg-muted active:scale-95 transition-all flex items-center justify-center"
                       >
                         +{val >= 1000 ? `${val/1000}k` : val}
                       </button>
                     ))}
                     <button
                       onClick={() => setCashTendered(totalPrice)}
-                      className="h-10 rounded-xl border border-primary/20 bg-primary/5 text-primary text-[11px] font-bold hover:bg-primary/10 active:scale-95 transition-all flex items-center justify-center"
+                      className="h-12 rounded-2xl border border-border bg-card text-sm font-bold hover:bg-muted active:scale-95 transition-all flex items-center justify-center"
                     >
                       Pas
                     </button>
                   </div>
                   <div className="relative group">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">Rp</span>
                     <Input
                       type="number"
-                      className="h-10 pl-8 pr-4 bg-muted/40 border-none rounded-xl font-black text-base"
-                      placeholder="Masukkan nominal..."
+                      className="h-14 pl-11 pr-4 bg-muted/40 border-none rounded-2xl font-black text-lg"
+                      placeholder="0"
                       value={cashTendered || ""}
                       onChange={e => setCashTendered(e.target.value === "" ? 0 : Number(e.target.value))}
                     />
                   </div>
                   {cashTendered >= totalPrice && (
-                    <div className="flex justify-between items-center px-3 py-2 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
-                      <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Kembalian</span>
-                      <span className="text-sm font-black text-emerald-600">Rp {(cashTendered - totalPrice).toLocaleString("id-ID")}</span>
+                    <div className="flex justify-between items-center px-5 py-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                      <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">Kembalian</span>
+                      <span className="text-xl font-black text-emerald-600">Rp {(cashTendered - totalPrice).toLocaleString("id-ID")}</span>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="p-4 rounded-2xl bg-muted/30 space-y-2 border border-border/10">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Ringkasan</p>
+              <div className="p-5 rounded-2xl bg-muted/30 space-y-3 border border-border/10">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Ringkasan</p>
                 {customerName && (
-                  <div className="flex justify-between text-[10px] pb-1.5 border-b border-border/20">
+                  <div className="flex justify-between text-xs pb-2 border-b border-border/20">
                     <span className="text-muted-foreground">Pelanggan</span>
                     <span className="font-bold text-foreground">{customerName} {tableNumber ? `(Meja ${tableNumber})` : ""}</span>
                   </div>
                 )}
-                <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {cart.map(item => (
-                    <div key={item.id} className="flex justify-between text-[10px]">
+                    <div key={item.id} className="flex justify-between text-xs">
                       <span className="text-foreground/70 truncate flex-1 mr-4">{item.name} ×{item.cartQty}</span>
                       <span className="font-bold text-foreground shrink-0">Rp {((item.sellingPrice || 0) * item.cartQty).toLocaleString("id-ID")}</span>
                     </div>
                   ))}
                 </div>
-                <div className="pt-2 border-t border-border/50 flex justify-between font-black text-sm text-primary">
+                <div className="pt-3 border-t border-border/50 flex justify-between font-black text-base text-primary">
                   <span>TOTAL</span>
                   <span>Rp {totalPrice.toLocaleString("id-ID")}</span>
                 </div>
               </div>
             </div>
           ) : cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40">
               <ShoppingBag className="w-12 h-12 mb-3" />
               <p className="text-sm font-medium">Keranjang Kosong</p>
               <p className="text-xs">Klik barang untuk menambahkan</p>
             </div>
           ) : (
-            cart.map(item => <CartRow key={item.id} item={item} onUpdate={updateCartQty} />)
+            <>
+              <div className="flex-1">
+                {cart.map(item => <CartRow key={item.id} item={item} onUpdate={updateCartQty} />)}
+              </div>
+              {/* Subtotal at bottom of cart */}
+              <div className="sticky bottom-0 pt-3 pb-2 bg-card/90 backdrop-blur-sm -mx-5 px-5 border-t border-border/50 mt-auto">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-black text-foreground">Total Tagihan</span>
+                  <span className="text-lg font-black text-primary">Rp {totalPrice.toLocaleString("id-ID")}</span>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-5 pb-28 bg-card border-t border-border/50 space-y-4">
-          {!isCheckoutOpen && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal ({totalItems} item)</span>
-                <span className="font-medium">Rp {totalPrice.toLocaleString("id-ID")}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total Tagihan</span>
-                <span className="text-primary">Rp {totalPrice.toLocaleString("id-ID")}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
+        <div className="p-5 bg-card border-t border-border/50 space-y-4">
+          <div className={cn("grid gap-2", !isCheckoutOpen && profile?.businessType === "FNB" && orderType === "DINE_IN" && !activeBillId ? "grid-cols-1" : "grid-cols-2")}>
             {isCheckoutOpen ? (
               <>
                 <button
@@ -914,7 +1105,7 @@ export default function POSPage() {
                 </button>
                 <button
                   onClick={handleCheckout}
-                  disabled={isProcessing}
+                  disabled={isProcessing || (paymentMethod === "CASH" && cashTendered < totalPrice)}
                   className="h-12 rounded-xl gradient-primary text-white text-xs font-bold flex items-center justify-center gap-2 touchable shadow-lg disabled:opacity-60"
                 >
                   {isProcessing ? (
@@ -929,18 +1120,21 @@ export default function POSPage() {
               <>
                 <button
                   onClick={handleSaveOpenBill}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || isFnBIncomplete}
                   className="h-11 rounded-xl bg-muted text-foreground text-xs font-semibold flex items-center justify-center gap-2 touchable disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4" /> Simpan Bill
+                  <Save className="w-4 h-4" /> {profile?.businessType === "FNB" ? "Bayar Nanti" : "Simpan Bill"}
                 </button>
-                <button
-                  onClick={() => setIsCheckoutOpen(true)}
-                  disabled={cart.length === 0}
-                  className="h-11 rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-2 touchable shadow-md disabled:opacity-50"
-                >
-                  Bayar Sekarang <ChevronRight className="w-4 h-4" />
-                </button>
+                {/* FNB Dine In: no bayar sekarang unless restoring saved bill */}
+                {!(profile?.businessType === "FNB" && orderType === "DINE_IN" && !activeBillId) && (
+                  <button
+                    onClick={() => setIsCheckoutOpen(true)}
+                    disabled={cart.length === 0 || isFnBIncomplete}
+                    className="h-11 rounded-xl bg-primary text-white text-xs font-semibold flex items-center justify-center gap-2 touchable shadow-md disabled:opacity-50"
+                  >
+                    Bayar Sekarang <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -994,33 +1188,93 @@ export default function POSPage() {
               </div>
             </div>
 
+            {/* FNB Order Type Toggle - Mobile */}
+            {!isCheckoutOpen && profile?.businessType === "FNB" && (
+              <div className="px-5 py-3 border-b border-border/50 bg-muted/20">
+                <div className="grid grid-cols-2 gap-2 p-1 bg-muted/40 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => handleOrderTypeChange("DINE_IN")}
+                    className={cn(
+                      "py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                      orderType === "DINE_IN" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Utensils className="w-4 h-4" />
+                    Dine In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOrderTypeChange("TAKEAWAY")}
+                    className={cn(
+                      "py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                      orderType === "TAKEAWAY" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Package className="w-4 h-4" />
+                    Takeaway
+                  </button>
+                </div>
+                
+                {/* Table Input for DINE_IN - Click to select table */}
+                {orderType === "DINE_IN" && profile?.useTable && (
+                  <button
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      setActiveTab("MEJA");
+                    }}
+                    className="mt-3 w-full relative"
+                  >
+                    <div className={cn(
+                      "w-full h-10 px-4 bg-muted/40 rounded-xl text-sm outline-none text-center font-bold flex items-center justify-center gap-2 transition-all",
+                      tableNumber ? "text-primary ring-1 ring-primary/30 bg-primary/5" : "text-muted-foreground hover:bg-muted/60"
+                    )}>
+                      {tableNumber ? (
+                        <>
+                          <span className="text-lg">{tableNumber}</span>
+                          <span>Meja {tableNumber}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronRight className="w-4 h-4 rotate-90" />
+                          <span>Pilih Nomor Meja</span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                )}
+                
+                {/* Takeaway indicator */}
+                {orderType === "TAKEAWAY" && (
+                  <div className="mt-3 flex items-center justify-center gap-2 px-3 py-2 bg-muted/30 rounded-lg">
+                    <Package className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">Pesanan untuk dibawa pulang</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto scroll-area px-5">
               {isCheckoutOpen ? (
                 <div className="space-y-8 py-6">
-                  <div className="text-center py-1">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total Tagihan</p>
-                    <p className="text-2xl font-black text-foreground tracking-tight mt-0.5">
-                      Rp {totalPrice.toLocaleString("id-ID")}
-                    </p>
-                    <p className="text-[0.625rem] text-muted-foreground">{totalItems} barang</p>
-                  </div>
-
                   <div className="space-y-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Metode Pembayaran</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Metode Pembayaran</p>
+                    <div className="grid grid-cols-3 gap-3">
                       {PAYMENT_METHODS.map(m => (
                         <button
                           key={m.id}
                           onClick={() => setPaymentMethod(m.id)}
                           className={cn(
-                            "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all duration-150 text-center",
-                            paymentMethod === m.id ? "border-primary bg-primary/5" : "border-border bg-card"
+                            "flex flex-col items-center gap-3 py-4 rounded-2xl border-2 transition-all duration-150 text-center",
+                            paymentMethod === m.id ? "border-primary bg-primary/5 shadow-md" : "border-border/50 bg-card hover:border-muted-foreground/30"
                           )}
                         >
-                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border", m.color)}>
-                            <m.icon className="w-4 h-4" />
+                          <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center border-2", m.color)}>
+                            <m.icon className="w-5 h-5" />
                           </div>
-                          <p className="font-bold text-[9px] text-foreground leading-tight">{m.label}</p>
+                          <div>
+                            <p className="font-black text-sm text-foreground">{m.label}</p>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -1028,42 +1282,40 @@ export default function POSPage() {
 
                   {paymentMethod === "CASH" && (
                     <div className="space-y-4">
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Nominal Uang</p>
-                    <div className="flex flex-wrap gap-1.5">
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Nominal Uang</p>
+                    <div className="grid grid-cols-4 gap-2">
                         {[1000, 2000, 5000, 10000, 20000, 50000, 100000].map(val => (
                           <button
                             key={val}
                             onClick={() => setCashTendered(prev => prev + val)}
-                            className="w-[calc(25%-6px)] h-9 rounded-xl border border-border bg-card text-[9px] font-bold active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="h-12 rounded-2xl border border-border bg-card text-sm font-bold active:scale-95 transition-all flex items-center justify-center"
                           >
                             +{val >= 1000 ? `${val/1000}k` : val}
                           </button>
                         ))}
                         <button
                           onClick={() => setCashTendered(totalPrice)}
-                          className="w-[calc(25%-6px)] h-9 rounded-xl border border-primary/20 bg-primary/5 text-primary text-[9px] font-bold active:scale-95 transition-all flex items-center justify-center shrink-0"
+                          className="h-12 rounded-2xl border border-primary/30 bg-primary/5 text-primary text-sm font-black active:scale-95 transition-all flex items-center justify-center"
                         >
                           Pas
                         </button>
                       </div>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">Rp</span>
                         <Input
                           type="number"
-                          className="h-12 pl-10 pr-4 bg-muted/40 border-none rounded-xl font-black text-lg"
+                          className="h-14 pl-11 pr-4 bg-muted/40 border-none rounded-2xl font-black text-lg"
                           placeholder="0"
                           value={cashTendered || ""}
                           onChange={e => setCashTendered(e.target.value === "" ? 0 : Number(e.target.value))}
                         />
                       </div>
-                      <div className="flex justify-between items-center px-4 py-2 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Kembalian</span>
-                        <span className="text-sm font-black text-emerald-600">
-                          {cashTendered > totalPrice 
-                            ? `Rp ${(cashTendered - totalPrice).toLocaleString("id-ID")}` 
-                            : "-"}
-                        </span>
-                      </div>
+                      {cashTendered >= totalPrice && (
+                        <div className="flex justify-between items-center px-5 py-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                          <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">Kembalian</span>
+                          <span className="text-xl font-black text-emerald-600">Rp {(cashTendered - totalPrice).toLocaleString("id-ID")}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1083,7 +1335,7 @@ export default function POSPage() {
                   </button>
                   <button
                     onClick={handleCheckout}
-                    disabled={isProcessing}
+                    disabled={isProcessing || (paymentMethod === "CASH" && cashTendered < totalPrice)}
                     className="h-14 rounded-2xl gradient-primary text-white font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
                   >
                     {isProcessing ? (
@@ -1100,19 +1352,24 @@ export default function POSPage() {
                     <span className="text-sm text-muted-foreground font-medium">Total Tagihan</span>
                     <span className="text-2xl font-bold text-foreground">Rp {totalPrice.toLocaleString("id-ID")}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={cn("grid gap-2", profile?.businessType === "FNB" && orderType === "DINE_IN" && !activeBillId ? "grid-cols-1" : "grid-cols-2")}>
                     <button
                       onClick={handleSaveOpenBill}
-                      className="h-13 rounded-2xl bg-muted text-foreground font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      disabled={isFnBIncomplete}
+                      className="h-13 rounded-2xl bg-muted text-foreground font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-40"
                     >
-                      Simpan Bill
+                      {profile?.businessType === "FNB" ? "Bayar Nanti" : "Simpan Bill"}
                     </button>
-                    <button
-                      onClick={() => setIsCheckoutOpen(true)}
-                      className="h-13 rounded-2xl gradient-primary text-white font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                      Pembayaran
-                    </button>
+                    {/* FNB Dine In: no pembayaran unless restoring saved bill */}
+                    {!(profile?.businessType === "FNB" && orderType === "DINE_IN" && !activeBillId) && (
+                      <button
+                        onClick={() => setIsCheckoutOpen(true)}
+                        disabled={isFnBIncomplete}
+                        className="h-13 rounded-2xl gradient-primary text-white font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-40"
+                      >
+                        Pembayaran
+                      </button>
+                    )}
                   </div>
                 </>
               )}
@@ -1312,9 +1569,12 @@ export default function POSPage() {
                   setCart([]);
                   setCustomerName("");
                   setCustomerPhone("");
-                  setTableNumber("");
                   setCashTendered(0);
                   setActiveBillId(null);
+                  // Keep table active for Dine In - meja belum selesai
+                  if (profile?.businessType !== "FNB" || orderType === "TAKEAWAY") {
+                    setTableNumber("");
+                  }
                 }}
                 className="h-11 rounded-xl gradient-primary text-white text-xs font-bold flex items-center justify-center gap-2 touchable shadow-lg"
               >
@@ -1324,6 +1584,38 @@ export default function POSPage() {
           </div>
         </div>
       )}
+      {/* ── Bill Saved Confirmation ── */}
+      {isBillSavedOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-background w-full max-w-sm rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300 shadow-2xl">
+            <div className="bg-primary p-8 flex flex-col items-center text-white text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-inner">
+                <Save className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-xl font-black tracking-tight mb-1">Bill Disimpan</h2>
+              <p className="text-primary-50 text-sm font-medium bg-black/10 px-4 py-1.5 rounded-full">
+                {billSavedInfo.table ? `Meja ${billSavedInfo.table}` : "Draft Tersimpan"}
+              </p>
+            </div>
+            <div className="p-6 text-center">
+              <div className="bg-muted/30 rounded-2xl p-4 mb-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Pesanan tersimpan sebagai draft. Buka dari menu{" "}
+                  <span className="font-bold text-foreground">Daftar Bill</span>{" "}
+                  kapan saja untuk melanjutkan.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsBillSavedOpen(false)}
+                className="w-full h-12 rounded-xl gradient-primary text-white font-bold text-sm shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Barcode Scanner Overlay ── */}
       {isScannerOpen && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col ">
@@ -1386,6 +1678,11 @@ export default function POSPage() {
                         <p className="text-[0.625rem] text-muted-foreground mt-0.5">
                           {new Date(tx.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} · ID: {tx.id}
                         </p>
+                        {tx.tableNumber && (
+                          <p className="text-[0.625rem] font-bold text-primary mt-0.5">
+                            Meja {tx.tableNumber} · {tx.orderType === "TAKEAWAY" ? "Takeaway" : "Dine In"}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right ml-4">
                         <p className="text-sm font-bold text-primary">Rp {tx.total.toLocaleString("id-ID")}</p>
