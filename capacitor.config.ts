@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   plugins: {
     GoogleAuth: {
-      scopes: ["profile", "email", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive.file"],
+      scopes: ["profile", "email", "openid"],
       serverClientId: "957204893367-j1ub6tif1rtoh7kiqig3m11s7q8aagiu.apps.googleusercontent.com",
       forceCodeForRefreshToken: false,
     },
