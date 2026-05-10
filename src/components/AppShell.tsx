@@ -34,7 +34,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Auto-sync on load
+    if (profile?.isGoogleConnected && profile?.spreadsheetId) {
+      const runAutoSync = async () => {
+        try {
+          const { initGoogleApi, loginGoogle, syncAllToCloud } = await import("@/lib/google-sheets");
+          await initGoogleApi();
+          await loginGoogle(true); // Attempt silent login to warm up the session
+          await syncAllToCloud(profile.spreadsheetId!);
+          console.log("Initial background sync completed");
+        } catch (e) {
+          console.warn("Background auto-sync skipped (not authenticated)");
+        }
+      };
+      runAutoSync();
+    }
+  }, [profile?.isGoogleConnected, profile?.spreadsheetId]);
 
   if (!mounted || isLoading) {
     return <AppSkeleton />;

@@ -20,23 +20,11 @@ import { motion, AnimatePresence } from "framer-motion";
 // ── Skeleton ──────────────────────────────────────────────
 function SuppliersSkeleton() {
   return (
-    <div className="">
+    <div className="min-h-screen bg-background">
       <div className="w-full h-48 shimmer mb-6" />
-      <div className="px-5 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-6xl mx-auto">
-        {[1, 2, 3, 4].map(i => <div key={i} className="h-24 rounded-2xl shimmer" />)}
+      <div className="px-5 pt-6 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1600px] mx-auto">
+        {[1, 2, 3].map(i => <div key={i} className="h-40 rounded-[2rem] shimmer" />)}
       </div>
-    </div>
-  );
-}
-
-// ── Bento Table Header ─────────────────────────────────────
-function SupplierTableHeader() {
-  return (
-    <div className="grid grid-cols-[1fr_100px_40px] lg:grid-cols-[1fr_200px_1fr_120px] gap-2 lg:gap-4 px-3 lg:px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
-      <span>Supplier</span>
-      <span>Kontak</span>
-      <span className="hidden lg:block">Alamat</span>
-      <span className="text-right"></span>
     </div>
   );
 }
@@ -48,40 +36,61 @@ function SupplierBentoRow({ supplier, onEdit, onDelete }: {
   onDelete: (id: string) => void;
 }) {
   return (
-    <Card className="group overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-1.5 rounded-xl">
-      <div className="grid grid-cols-[1fr_100px_40px] lg:grid-cols-[1fr_200px_1fr_120px] items-center gap-2 lg:gap-4 h-14 lg:h-16 px-3 lg:px-4">
-        {/* Box 1: Name */}
-        <div className="flex items-center gap-2 w-full min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Building2 className="w-3.5 h-3.5" />
+    <Card className="card-elevated p-4 lg:p-6 mb-4 group hover:shadow-xl transition-all duration-300 bg-card rounded-[2rem] border-transparent">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+        
+        {/* Left: Icon & Name */}
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="w-14 h-14 rounded-2xl gradient-primary text-white flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
+            <Building2 className="w-6 h-6" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-[0.6875rem] lg:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors leading-tight">{supplier.name}</h3>
-            <p className="text-[7px] lg:text-[8px] font-black text-muted-foreground/40 uppercase truncate">#{supplier.id.slice(-4).toUpperCase()}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-black text-foreground truncate group-hover:text-primary transition-colors">{supplier.name}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
+                #{String(supplier.id).slice(-4)}
+              </span>
+              {supplier.contact && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  <Phone className="w-3 h-3" />
+                  {supplier.contact}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Box 2: Contact */}
-        <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-          <Phone className="w-2.5 h-2.5 shrink-0" />
-          <span className="text-[10px] font-bold truncate">{supplier.contact || "-"}</span>
-        </div>
+        {/* Middle: Address (Hidden on Mobile if empty, otherwise shown cleanly) */}
+        {supplier.address && (
+          <div className="flex items-center gap-3 lg:w-1/3 shrink-0 bg-muted/30 p-3 rounded-2xl">
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
+            <span className="text-xs font-medium text-muted-foreground line-clamp-2 leading-relaxed">
+              {supplier.address}
+            </span>
+          </div>
+        )}
 
-        {/* Box 3: Address (Hidden on Mobile) */}
-        <div className="hidden lg:flex items-center gap-2 text-muted-foreground w-full">
-          <MapPin className="w-3 h-3 shrink-0" />
-          <span className="text-[10px] font-medium truncate">{supplier.address || "No Address"}</span>
-        </div>
-
-        {/* Box 4: Actions */}
-        <div className="flex items-center justify-end">
-          <button 
-            onClick={() => onEdit(supplier)}
-            className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-primary/10 transition-all"
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/10">
+          <Button 
+            variant="outline"
+            onClick={(e) => { e.stopPropagation(); onEdit(supplier); }}
+            className="flex-1 lg:flex-none h-12 lg:h-12 w-full lg:w-12 rounded-xl lg:rounded-2xl border-blue-500/20 text-blue-600 hover:bg-blue-500 hover:text-white transition-all shadow-sm"
           >
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
+            <Edit2 className="w-4 h-4" />
+          </Button>
+
+          <Button 
+            variant="outline"
+            onClick={(e) => { e.stopPropagation(); onDelete(supplier.id); }}
+            className="flex-1 lg:flex-none h-12 lg:h-12 w-full lg:w-12 rounded-xl lg:rounded-2xl border-rose-500/20 text-rose-600 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
+        
       </div>
     </Card>
   );
@@ -147,27 +156,27 @@ export default function SuppliersPage() {
   if (!suppliers) return <SuppliersSkeleton />;
 
   return (
-    <div className="pb-32  min-h-screen bg-background">
+    <div className="pb-32 min-h-screen bg-background">
       <PageHeader
         title="Supplier Bisnis"
         subtitle="Daftar Mitra"
         actions={
-          <div className="flex items-center gap-2">
-            <div className="relative group hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary" />
+          <div className="flex items-center gap-3">
+            <div className="relative group hidden lg:block">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
-                className="h-10 w-64 pl-9 bg-muted/40 border-none rounded-xl text-sm"
-                placeholder="Cari supplier..."
+                className="h-12 w-72 pl-11 bg-card border-none rounded-2xl font-bold shadow-sm"
+                placeholder="Cari nama atau kontak..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
             <Button
               onClick={() => handleOpenForm()}
-              className="h-10 rounded-xl gradient-primary text-white font-bold flex items-center gap-2 px-4 shadow-lg shadow-primary/20"
+              className="h-12 px-6 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-105 transition-all"
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Tambah</span>
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">Tambah Mitra</span>
             </Button>
           </div>
         }
@@ -175,60 +184,80 @@ export default function SuppliersPage() {
 
       <div className="w-full px-5 pt-8 mx-auto space-y-8 max-w-[1600px]">
         {/* Mobile Search */}
-        <div className="relative group md:hidden">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
+        <div className="relative group lg:hidden mb-6">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary" />
           <Input
-            className="h-12 pl-12 bg-muted/40 border-none rounded-2xl text-sm"
+            className="h-14 pl-14 bg-card border-none rounded-3xl font-bold shadow-sm w-full text-base"
             placeholder="Cari supplier..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
+
         {/* Bento Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <Card className="p-4 border-none shadow-sm bg-primary/5 backdrop-blur-sm relative overflow-hidden group hover:bg-primary/10 transition-colors">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
-              <Building2 className="w-12 h-12 text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+          <Card className="p-6 lg:p-8 card-elevated rounded-[2.5rem] bg-card relative overflow-hidden group">
+            <div className="absolute -right-6 -top-6 p-8 bg-primary/5 rounded-[3rem] group-hover:scale-110 transition-transform duration-500">
+              <Building2 className="w-12 h-12 text-primary/40" />
             </div>
             <div className="relative z-10">
-              <p className="text-[8px] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Supplier</p>
-              <h3 className="text-2xl font-black text-primary tracking-tight">{suppliers.length}</h3>
-              <p className="text-[8px] font-bold text-primary/40 mt-1">Mitra aktif</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">Total Mitra</p>
+              <h3 className="text-4xl lg:text-5xl font-black text-foreground tracking-tighter">{suppliers.length}</h3>
+              <p className="text-xs font-bold text-primary mt-4 uppercase tracking-widest">Supplier Terdaftar</p>
             </div>
           </Card>
 
-          <Card className="p-4 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
-              <Phone className="w-12 h-12 text-blue-500" />
+          <Card className="p-6 lg:p-8 card-elevated rounded-[2.5rem] bg-blue-500 text-white relative overflow-hidden group shadow-lg shadow-blue-500/20">
+            <div className="absolute -right-6 -top-6 p-8 bg-white/10 rounded-[3rem] group-hover:scale-110 transition-transform duration-500">
+              <Phone className="w-12 h-12 text-white/50" />
             </div>
             <div className="relative z-10">
-              <p className="text-[8px] font-black text-blue-500/60 uppercase tracking-[0.2em] mb-1">Kontak Mitra</p>
-              <h3 className="text-2xl font-black text-blue-500 tracking-tight">{suppliers.filter(s => s.contact).length}</h3>
-              <p className="text-[8px] font-bold text-blue-500/40 mt-1">Memiliki kontak</p>
+              <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] mb-2">Kontak Aktif</p>
+              <h3 className="text-4xl lg:text-5xl font-black tracking-tighter">{suppliers.filter(s => s.contact).length}</h3>
+              <p className="text-xs font-bold text-blue-100 mt-4 uppercase tracking-widest">Siap Dihubungi</p>
+            </div>
+          </Card>
+
+          <Card className="p-6 lg:p-8 card-elevated rounded-[2.5rem] bg-emerald-500 text-white relative overflow-hidden group shadow-lg shadow-emerald-500/20">
+            <div className="absolute -right-6 -top-6 p-8 bg-white/10 rounded-[3rem] group-hover:scale-110 transition-transform duration-500">
+              <CheckCircle2 className="w-12 h-12 text-white/50" />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] mb-2">Status Data</p>
+              <h3 className="text-2xl lg:text-3xl font-black tracking-tight leading-tight mt-2">Terverifikasi</h3>
+              <p className="text-xs font-bold text-emerald-100 mt-6 uppercase tracking-widest">Aman & Tersinkron</p>
             </div>
           </Card>
         </div>
 
-        {/* List */}
-        <div className="w-full">
-          <SupplierTableHeader />
+        {/* List Section */}
+        <div className="w-full pt-4">
+          <div className="flex items-center justify-between mb-6 px-2">
+            <h2 className="text-sm font-black text-foreground uppercase tracking-widest">Daftar Supplier</h2>
+            <span className="text-[10px] font-bold text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+              {filteredSuppliers?.length || 0} DITEMUKAN
+            </span>
+          </div>
+
           {filteredSuppliers?.length === 0 ? (
-            <div className="py-20 text-center space-y-4 bg-muted/20 rounded-[2.5rem] border-2 border-dashed border-border/50">
-              <div className="w-20 h-20 rounded-full bg-muted/40 flex items-center justify-center mx-auto mb-4">
-                <Search className="w-10 h-10 text-muted-foreground/20" />
+            <div className="py-24 text-center space-y-5 bg-card/50 rounded-[3rem] border-2 border-dashed border-border/50">
+              <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">
+                <Search className="w-10 h-10 text-muted-foreground/30" />
               </div>
-              <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Tidak Ditemukan</h3>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Coba kata kunci lain</p>
+              <h3 className="text-2xl font-black text-foreground uppercase tracking-tighter">Belum Ada Data</h3>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Coba tambahkan supplier baru</p>
             </div>
           ) : (
-            filteredSuppliers?.map(s => (
-              <SupplierBentoRow
-                key={s.id}
-                supplier={s}
-                onEdit={handleOpenForm}
-                onDelete={handleDelete}
-              />
-            ))
+            <div className="space-y-4">
+              {filteredSuppliers?.map(s => (
+                <SupplierBentoRow
+                  key={s.id}
+                  supplier={s}
+                  onEdit={handleOpenForm}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -236,73 +265,78 @@ export default function SuppliersPage() {
       {/* Modal Form */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 lg:p-0">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
             />
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm bg-card border border-border/50 rounded-[2.5rem] shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-card border border-border/50 rounded-[2.5rem] shadow-2xl overflow-hidden"
             >
-              <div className="p-6 border-b border-border/50 flex items-center justify-between bg-primary/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    <Building2 className="w-5 h-5" />
+              <div className="p-6 border-b border-border/50 flex items-center justify-between bg-muted/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Building2 className="w-6 h-6" />
                   </div>
-                  <h2 className="text-sm font-black text-foreground uppercase tracking-tighter">
-                    {editingId ? "Edit Supplier" : "Supplier Baru"}
-                  </h2>
+                  <div>
+                    <h2 className="text-base font-black text-foreground uppercase tracking-tighter">
+                      {editingId ? "Edit Mitra" : "Mitra Baru"}
+                    </h2>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                      Data Supplier
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors">
-                  <X className="w-4 h-4" />
+                <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors text-muted-foreground">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                <div className="space-y-4">
+              <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
+                <div className="space-y-5">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Nama Supplier</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Nama Bisnis / PT</label>
                     <Input
                       required
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Contoh: PT. Sumber Makmur"
-                      className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-bold"
+                      className="h-14 px-6 rounded-2xl bg-muted/40 border-none font-bold text-base focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Kontak / No. HP</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Kontak / No. WhatsApp</label>
                     <Input
                       value={formData.contact}
                       onChange={e => setFormData({ ...formData, contact: e.target.value })}
                       placeholder="08xx xxxx xxxx"
-                      className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-bold"
+                      className="h-14 px-6 rounded-2xl bg-muted/40 border-none font-bold text-base focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Alamat</label>
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Alamat Lengkap (Opsional)</label>
                     <textarea
                       value={formData.address}
                       onChange={e => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Alamat lengkap supplier..."
-                      className="w-full min-h-[100px] p-6 rounded-2xl bg-muted/30 border-none font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      placeholder="Masukkan alamat lengkap..."
+                      className="w-full min-h-[120px] p-6 rounded-2xl bg-muted/40 border-none font-bold text-sm outline-none focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                     />
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="submit"
-                  className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                  className="w-full h-16 rounded-[2rem] gradient-primary text-white font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all mt-4"
                 >
-                  {editingId ? "Simpan Perubahan" : "Tambah Supplier"}
                   <CheckCircle2 className="w-5 h-5" />
-                </button>
+                  {editingId ? "Simpan Perubahan" : "Simpan Mitra Baru"}
+                </Button>
               </form>
             </motion.div>
           </div>

@@ -3,10 +3,11 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AppShell from "@/components/AppShell";
 import { ConfirmProvider } from "@/hooks/useConfirm";
+import Script from "next/script";
 
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
-const inter = Inter({
+const inter = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
@@ -61,6 +62,8 @@ export default function RootLayout({
           <FontSizeProvider>
             <ConfirmProvider>
               <AppShell>{children}</AppShell>
+              <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
+              <Script src="https://apis.google.com/js/api.js" strategy="lazyOnload" />
             </ConfirmProvider>
           </FontSizeProvider>
           <script

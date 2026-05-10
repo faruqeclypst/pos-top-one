@@ -8,7 +8,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { 
   Store, Palette, Database, Download, Upload, Sun, Moon, 
   ChevronRight, Info, Trash2, RotateCcw, Tag, Plus, X, Globe, Bell,
-  MapPin, Package, Building2, Type
+  MapPin, Package, Building2, Type, Cloud
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import db from "@/lib/db";
@@ -22,6 +22,8 @@ import { Switch } from "@/components/ui/switch";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
+import { initGoogleApi, loginGoogle, findOrCreateSpreadsheet, syncAllToCloud, downloadFromCloud } from "@/lib/google-sheets";
+import { useEffect } from "react";
 
 const THEMES = [
   { id: "light", label: "Terang", icon: Sun, color: "text-amber-500 bg-amber-500/10" },
@@ -91,6 +93,107 @@ export default function SettingsPage() {
   const transactions = useLiveQuery(() => db.transactions.count());
   
   const [newCat, setNewCat] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+  const [restoreSuccess, setRestoreSuccess] = useState(false);
+
+  useEffect(() => {
+    initGoogleApi();
+  }, []);
+
+  const handleConnectGoogle = async () => {
+    try {
+      const token = await loginGoogle();
+      if (token) {
+        const id = await findOrCreateSpreadsheet(token);
+        await saveProfile({ 
+          spreadsheetId: id, 
+          isGoogleConnected: true,
+          lastCloudSync: Date.now()
+        });
+        alert("Terhubung ke Google Drive!");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal terhubung ke Google.");
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!profile?.spreadsheetId) return;
+    setIsSyncing(true);
+    try {
+      const token = await loginGoogle();
+      const success = await syncAllToCloud(profile.spreadsheetId);
+      if (success) {
+        await saveProfile({ lastCloudSync: Date.now() });
+        setSyncSuccess(true);
+        setTimeout(() => setSyncSuccess(false), 3000);
+      } else {
+        alert("Gagal sinkronisasi.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Sesi berakhir, silakan login ulang.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleRestoreCloud = async () => {
+    if (!profile?.spreadsheetId) return;
+    const isConfirmed = await confirm({
+      title: "Restore dari Cloud?",
+      message: "Data lokal Anda akan diganti dengan data dari Google Sheets. Lanjutkan?",
+      type: "warning"
+    });
+    if (!isConfirmed) return;
+
+    setIsSyncing(true);
+    try {
+      await loginGoogle(); // Get token
+      const success = await downloadFromCloud(profile.spreadsheetId);
+      if (success) {
+        setRestoreSuccess(true);
+        setTimeout(() => {
+          setRestoreSuccess(false);
+          window.location.reload();
+        }, 1500);
+      } else {
+        alert("Gagal menarik data.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal login atau akses dibatalkan.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleLogoutCloud = async () => {
+    const isConfirmed = await confirm({
+      title: "Logout & Hapus Data Lokal?",
+      message: "Akun akan logout dan SEMUA DATA LOKAL di perangkat ini akan dihapus. Anda perlu login kembali untuk menarik data dari cloud. Lanjutkan?",
+      type: "danger",
+      confirmText: "Ya, Logout",
+      cancelText: "Batal"
+    });
+    
+    if (!isConfirmed) return;
+
+    // Putuskan koneksi Google dan hapus profil
+    await saveProfile({ isGoogleConnected: false, spreadsheetId: undefined });
+    
+    // Hapus token dari memory
+    localStorage.removeItem('google_access_token');
+    localStorage.removeItem('google_access_token_expiry');
+    
+    // Wipe seluruh database lokal agar "fresh"
+    await db.delete();
+    
+    // Redirect ke root untuk start over
+    window.location.href = "/";
+  };
 
   const blobToBase64 = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -383,6 +486,15 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-foreground uppercase ml-1">No. WhatsApp / HP</p>
+                    <Input
+                      className="h-12 px-5 rounded-xl bg-muted/30 border-none font-bold"
+                      value={profile?.phone || ""}
+                      onChange={(e) => saveProfile({ phone: e.target.value })}
+                      placeholder="08xxxxxxxx"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
                     <p className="text-[10px] font-black text-foreground uppercase ml-1">Alamat</p>
                     <textarea
                       className="w-full min-h-[80px] p-4 rounded-xl bg-muted/30 border border-border/10 font-bold text-sm outline-none focus:ring-1 focus:ring-primary"
@@ -442,6 +554,73 @@ export default function SettingsPage() {
                 <SettingsRow label="Catat HP Pelanggan" desc="Simpan data pelanggan" icon={Globe} iconColor="bg-indigo-500/10 text-indigo-500" last>
                   <Switch checked={profile?.usePhoneNumber} onCheckedChange={checked => saveProfile({ usePhoneNumber: checked })} />
                 </SettingsRow>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection title="Koneksi Cloud" subtitle="Sinkronisasi Online" icon={Cloud}>
+              <div className="p-4 space-y-4">
+                {profile?.isGoogleConnected ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                        <Cloud className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Terhubung ke Google</p>
+                        <p className="text-[8px] text-emerald-600/60 font-bold uppercase mt-0.5">
+                          Sync: {profile.lastCloudSync ? new Date(profile.lastCloudSync).toLocaleString('id-ID') : 'Belum pernah'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      onClick={handleManualSync}
+                      disabled={isSyncing || syncSuccess}
+                      className={cn(
+                        "w-full h-12 rounded-xl font-bold text-xs transition-all duration-300",
+                        syncSuccess 
+                          ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" 
+                          : "gradient-primary text-white"
+                      )}
+                    >
+                      {syncSuccess ? "✅ Berhasil Disinkronkan!" : isSyncing ? "Menyingkronkan..." : "Upload ke Cloud"}
+                    </Button>
+
+                    <Button 
+                      onClick={handleRestoreCloud}
+                      disabled={isSyncing || restoreSuccess}
+                      variant={restoreSuccess ? "default" : "outline"}
+                      className={cn(
+                        "w-full h-12 rounded-xl font-bold text-xs transition-all duration-300",
+                        restoreSuccess
+                          ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-none"
+                          : "border-primary/20 text-primary"
+                      )}
+                    >
+                      {restoreSuccess ? "✅ Data Berhasil Ditarik!" : "Tarik Data dari Cloud"}
+                    </Button>
+
+                    <button 
+                      onClick={handleLogoutCloud}
+                      className="w-full text-[10px] font-bold text-muted-foreground hover:text-destructive transition-colors uppercase tracking-widest"
+                    >
+                      Logout Akun & Bersihkan Perangkat
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-[10px] text-muted-foreground leading-relaxed px-1 font-medium">
+                      Simpan data produk dan transaksi Anda secara aman di Google Drive. Bisa diakses dari browser mana saja.
+                    </p>
+                    <Button 
+                      onClick={handleConnectGoogle}
+                      className="w-full h-12 rounded-xl bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50 font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
+                      Login dengan Google
+                    </Button>
+                  </div>
+                )}
               </div>
             </SettingsSection>
 

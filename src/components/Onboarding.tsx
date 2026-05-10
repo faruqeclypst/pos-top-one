@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { UtensilsCrossed, Store, Briefcase, CheckCircle2, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { initGoogleApi, loginGoogle, findOrCreateSpreadsheet, downloadFromCloud } from "@/lib/google-sheets";
 
 export default function Onboarding() {
   const { saveProfile } = useStoreProfile();
@@ -13,13 +14,41 @@ export default function Onboarding() {
   const [selectedType, setSelectedType] = useState<'FNB' | 'RETAIL' | 'GENERAL'>('GENERAL');
   const [storeName, setStoreName] = useState("");
 
+  const [isRestoring, setIsRestoring] = useState(false);
+
   const handleComplete = async () => {
     await saveProfile({
       name: storeName || (selectedType === 'FNB' ? "Resto Saya" : selectedType === 'RETAIL' ? "Toko Saya" : "Bisnis Saya"),
       businessType: selectedType,
       isOnboarded: true,
     });
-    window.location.reload(); // Refresh to apply terminology everywhere
+    window.location.reload(); 
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsRestoring(true);
+    try {
+      await initGoogleApi();
+      const token = await loginGoogle();
+      if (!token) throw new Error("Gagal mendapatkan token Google");
+      const spreadsheetId = await findOrCreateSpreadsheet(token);
+      
+      if (spreadsheetId) {
+        const success = await downloadFromCloud(spreadsheetId);
+        if (success) {
+          alert("Data berhasil ditemukan! Memuat aplikasi...");
+          window.location.reload();
+          return;
+        }
+      }
+      alert("Akun Google terhubung, silakan lanjut setup nama toko.");
+      setStep(2);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal login Google.");
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const types = [
@@ -102,13 +131,39 @@ export default function Onboarding() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setStep(2)}
-                className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 mt-6 active:scale-95 transition-all"
-              >
-                Lanjut
-                <ArrowRight className="w-5 h-5" />
-              </button>
+              <div className="pt-4 space-y-3">
+                <button
+                  onClick={() => setStep(2)}
+                  className="w-full h-16 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                >
+                  Lanjut
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border/50" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
+                    <span className="bg-background px-4 text-muted-foreground">Atau</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGoogleLogin}
+                  disabled={isRestoring}
+                  className="w-full h-14 bg-card border-2 border-border/50 text-foreground rounded-[2rem] font-bold text-xs flex items-center justify-center gap-3 active:scale-95 transition-all hover:border-primary/20"
+                >
+                  {isRestoring ? (
+                    "Menghubungkan..."
+                  ) : (
+                    <>
+                      <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale" alt="Google" />
+                      Login & Restore Data Cloud
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           ) : (
             <motion.div 

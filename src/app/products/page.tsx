@@ -9,7 +9,7 @@ import db, { type Product, type Supplier, type Category } from "@/lib/db";
 import {
   Search, Plus, Edit2, Trash2, Package, ScanLine,
   X, ChevronRight, Tag, Layers, ArrowUpDown, Info, Building2,
-  ArrowDownCircle, History, TrendingUp, CheckCircle2
+  ArrowDownCircle, History, TrendingUp, CheckCircle2, Phone, MapPin
 } from "lucide-react";
 import { cn, playBeep } from "@/lib/utils";
 import ImageUploader from "@/components/ImageUploader";
@@ -41,13 +41,12 @@ function ProductsSkeleton() {
 // ── Bento Table Header ─────────────────────────────────────
 function ProductTableHeader() {
   return (
-    <div className="grid grid-cols-[40px_1fr_70px_80px_40px] lg:grid-cols-[80px_1fr_180px_160px_150px_120px] gap-2 lg:gap-4 px-3 lg:px-6 py-3 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-border/5">
-      <span></span>
-      <span>Produk</span>
-      <span className="hidden lg:block">Kategori</span>
-      <span className="text-center lg:text-left">Stok</span>
-      <span className="text-right lg:text-left">Harga</span>
-      <span className="text-right"></span>
+    <div className="flex items-center gap-2 lg:gap-4 px-4 lg:px-6 py-4 mb-2 text-[0.625rem] font-black text-muted-foreground uppercase tracking-[0.15em] border-b border-border/5">
+      <div className="hidden lg:block w-14 shrink-0"></div>
+      <div className="flex-1 min-w-0">Produk</div>
+      <div className="hidden lg:block w-32 shrink-0 text-left">Kategori</div>
+      <div className="flex-1 lg:w-40 shrink-0 text-right pr-4 lg:pr-8">Harga & Stok</div>
+      <div className="w-24 lg:w-36 shrink-0 text-right">Aksi</div>
     </div>
   );
 }
@@ -64,53 +63,67 @@ function ProductBentoRow({ product, onEdit, onDelete, onRestock, supplierName }:
   const stockStatus = product.stock <= 0 ? "error" : product.stock <= 5 ? "warning" : "success";
 
   return (
-    <Card className="group overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-1.5 rounded-xl">
-      <div className="grid grid-cols-[40px_1fr_70px_80px_40px] lg:grid-cols-[80px_1fr_180px_160px_150px_120px] items-center gap-2 lg:gap-4 h-14 lg:h-16 px-3 lg:px-4">
+    <Card className="group overflow-hidden border-none shadow-sm bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-all duration-300 mb-1.5 rounded-2xl">
+      <div className="flex items-center gap-4 px-4 lg:px-6 py-4 h-auto lg:h-24">
         {/* Box 1: Image */}
-        <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-lg bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-colors shrink-0">
+        <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-muted/30 overflow-hidden flex items-center justify-center border border-border/10 group-hover:border-primary/20 transition-all group-hover:scale-105 shadow-inner shrink-0">
           {imageUrl ? (
-            <img src={imageUrl} alt={product.name} className="w-full h-full object-contain p-0.5" />
+            <img src={imageUrl} alt={product.name} className="w-full h-full object-contain p-1" />
           ) : (
-            <Package className="w-3.5 h-3.5 text-muted-foreground/20" />
+            <Package className="w-6 h-6 text-muted-foreground/20" />
           )}
         </div>
 
         {/* Box 2: Name & Info */}
-        <div className="min-w-0">
-          <h3 className="text-[0.6875rem] lg:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors leading-tight">{product.name}</h3>
-          <p className="text-[7px] lg:text-[8px] font-mono text-muted-foreground/60 uppercase truncate">{product.sku || "NO-SKU"}</p>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-xs lg:text-sm font-black text-foreground truncate group-hover:text-primary transition-colors leading-tight">{product.name}</h3>
+          <p className="text-[8px] lg:text-[10px] font-mono text-muted-foreground/60 uppercase truncate tracking-wider">{product.sku || "NO-SKU"}</p>
         </div>
 
         {/* Box 3: Category (Hidden on Mobile) */}
-        <div className="hidden lg:flex items-center">
-          <Badge variant="outline" className="text-[8px] font-bold h-4 border-muted-foreground/20 text-muted-foreground bg-muted/20">
+        <div className="hidden lg:block w-32 shrink-0">
+          <Badge variant="outline" className="text-[9px] font-bold h-5 border-muted-foreground/20 text-muted-foreground bg-muted/10 px-2 rounded-lg">
             {product.category || "Umum"}
           </Badge>
         </div>
 
-        {/* Box 4: Stock */}
-        <div className="flex items-center justify-center lg:justify-start">
+        {/* Box 4 & 5: Combined Price & Stock */}
+        <div className="flex-1 lg:w-40 shrink-0 flex flex-col items-end gap-1 pr-4 lg:pr-8">
+          <p className="text-[10px] lg:text-sm font-black text-foreground tracking-tighter truncate">
+            Rp {(product.sellingPrice || 0).toLocaleString("id-ID")}
+          </p>
           <Badge 
             variant={stockStatus === "error" ? "destructive" : stockStatus === "warning" ? "warning" : "success"} 
-            className="h-4 lg:h-5 font-black text-[7px] lg:text-[8px] px-1.5 lg:px-2 shadow-sm border-none"
+            className="h-5 lg:h-6 font-black text-[8px] lg:text-[10px] px-1.5 lg:px-3 shadow-sm border-none rounded-lg"
           >
             {product.stock <= 0 ? "0" : product.stock} {product.unit || "Pcs"}
           </Badge>
         </div>
 
-        {/* Box 5: Price */}
-        <div className="flex flex-col items-end lg:items-start">
-          <p className="text-[0.6875rem] lg:text-xs font-black text-primary tracking-tighter">{(product.sellingPrice || 0).toLocaleString("id-ID")}</p>
-          <p className="hidden lg:block text-[8px] font-bold opacity-40">HPP: {(product.cogs || 0).toLocaleString("id-ID")}</p>
-        </div>
-
         {/* Box 6: Actions */}
-        <div className="flex items-center justify-end gap-1">
+        <div className="w-24 lg:w-36 shrink-0 flex items-center justify-end gap-1 lg:gap-2.5">
           <button 
-            onClick={() => onEdit(product)}
-            className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-primary/10 transition-all"
+            onClick={(e) => { e.stopPropagation(); onRestock(product); }}
+            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-500 hover:text-white text-emerald-600 transition-all shadow-sm"
+            title="Tambah Stok"
           >
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <ArrowDownCircle className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
+          </button>
+          
+          <button 
+            onClick={(e) => { e.stopPropagation(); onEdit(product); }}
+            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-blue-500/10 flex items-center justify-center hover:bg-blue-500 hover:text-white text-blue-600 transition-all shadow-sm"
+            title="Edit Produk"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(product.id); }}
+            className="w-7 h-7 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-rose-500/10 flex items-center justify-center hover:bg-rose-500 hover:text-white text-rose-600 transition-all shadow-sm"
+            title="Hapus Produk"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -123,6 +136,7 @@ export default function ProductsPage() {
   const { profile } = useStoreProfile();
   const terms = getTerminology(profile?.businessType);
   const confirm = useConfirm();
+  
   const products = useLiveQuery(() => db.products.orderBy("name").toArray());
   const suppliers = useLiveQuery(() => db.suppliers.toArray());
   const categories = useLiveQuery(() => db.categories.toArray());
@@ -135,18 +149,26 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockData, setRestockData] = useState({ qty: 0, buyPrice: 0 });
+  const [newSellingPrice, setNewSellingPrice] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("Semua");
-  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Supplier State
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [supplierFormData, setSupplierFormData] = useState({ name: "", contact: "", address: "" });
+  const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
   
   const handleRestock = async () => {
     if (!restockProduct || restockData.qty <= 0) return;
-    await processStockIn(restockProduct.id, restockData.qty, restockData.buyPrice);
+    const newHPP = await processStockIn(restockProduct.id, restockData.qty, restockData.buyPrice);
     
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    // Update selling price if changed
+    if (newSellingPrice > 0 && newSellingPrice !== restockProduct.sellingPrice) {
+      await db.products.update(restockProduct.id, { sellingPrice: newSellingPrice });
+    }
     
     setIsRestockOpen(false);
     setRestockData({ qty: 0, buyPrice: 0 });
+    setNewSellingPrice(0);
     setRestockProduct(null);
   };
 
@@ -170,14 +192,12 @@ export default function ProductsPage() {
     if (scannerRef.current) {
       isTransitioning.current = true;
       try {
-        // Only stop if the state is actually SCANNING or PAUSED
         const state = scannerRef.current.getState();
-        if (state === 2 || state === 3) { // 2 = SCANNING, 3 = PAUSED
+        if (state === 2 || state === 3) {
           await scannerRef.current.stop();
         }
         scannerRef.current = null;
       } catch (err) {
-        // Ignore "already under transition" errors as they are non-fatal in cleanup
         if (!(err as string).toString().includes("transition")) {
           console.error("Stop scanner failed:", err);
         }
@@ -261,8 +281,13 @@ export default function ProductsPage() {
       });
     } else {
       setEditingId(null);
+      const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const randomNum = Math.floor(100 + Math.random() * 900);
+      const skuPrefix = profile?.businessType === "FNB" ? "MENU-" : "SKU-";
+      const generatedSku = `${skuPrefix}${randomStr}${randomNum}`;
+      
       setFormData({
-        name: "", sku: "", barcode: "", category: "", supplierId: "",
+        name: "", sku: generatedSku, barcode: "", category: "", supplierId: "",
         cogs: 0, sellingPrice: 0, stock: 0, unit: "Pcs", image: null
       });
     }
@@ -272,7 +297,6 @@ export default function ProductsPage() {
   const handleSave = async () => {
     if (!formData.name) return;
     
-    // Ensure all required fields from Product interface are present
     const productData: any = {
       ...formData,
       createdAt: Date.now()
@@ -301,31 +325,70 @@ export default function ProductsPage() {
     }
   };
 
+  // Supplier handlers
+  const filteredSuppliers = suppliers?.filter(s => 
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.contact || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleOpenSupplierForm = (s?: Supplier) => {
+    if (s) {
+      setEditingSupplierId(s.id);
+      setSupplierFormData({ name: s.name, contact: s.contact, address: s.address });
+    } else {
+      setEditingSupplierId(null);
+      setSupplierFormData({ name: "", contact: "", address: "" });
+    }
+    setIsSupplierModalOpen(true);
+  };
+
+  const handleSaveSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingSupplierId) {
+      await db.suppliers.update(editingSupplierId, { ...supplierFormData });
+    } else {
+      await db.suppliers.add({
+        id: `SUPP-${Date.now()}`,
+        ...supplierFormData,
+        createdAt: Date.now()
+      });
+    }
+    setIsSupplierModalOpen(false);
+    setSupplierFormData({ name: "", contact: "", address: "" });
+    setEditingSupplierId(null);
+  };
+
+  const handleDeleteSupplier = async (id: string) => {
+    const ok = await confirm({
+      title: "Hapus Supplier?",
+      message: `Semua ${terms.product.toLowerCase()} terkait tetap ada tetapi tanpa relasi supplier. Lanjutkan?`,
+      confirmText: "Hapus",
+      cancelText: "Batal",
+      type: "danger"
+    });
+    if (ok) {
+      await db.suppliers.delete(id);
+    }
+  };
+
   if (!products) return <ProductsSkeleton />;
 
   return (
-    <div className="pb-32  min-h-screen bg-background">
+    <div className="pb-32 min-h-screen bg-background">
       <PageHeader
-        title={terms.inventory}
-        subtitle="Manajemen Stok"
+        title="Inventori & Mitra"
+        subtitle="Manajemen Stok & Supplier"
         actions={
           <div className="flex items-center gap-2">
             <div className="relative group hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary" />
                 <Input
                   className="h-10 w-64 pl-9 bg-muted/40 border-none rounded-xl text-sm"
-                  placeholder={`Cari ${terms.product.toLowerCase()}...`}
+                  placeholder="Cari barang atau mitra..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
             </div>
-            <Button
-              onClick={() => handleOpenForm()}
-              className="h-10 rounded-xl gradient-primary text-white font-bold flex items-center gap-2 px-4 shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Tambah</span>
-            </Button>
           </div>
         }
       />
@@ -336,80 +399,186 @@ export default function ProductsPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
           <Input
             className="h-12 pl-12 bg-muted/40 border-none rounded-2xl text-sm"
-            placeholder={`Cari ${terms.product.toLowerCase()}...`}
+            placeholder="Cari barang atau mitra..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* Bento Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <Card className="p-4 border-none shadow-sm bg-blue-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-blue-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
-              <Package className="w-12 h-12 text-blue-500" />
+        {/* Bento Stats - 4 Columns */}
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 mb-8">
+          <Card className="p-6 border-none shadow-sm bg-blue-500/5 backdrop-blur-md relative overflow-hidden group hover:bg-blue-500/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 group-hover:rotate-12 transition-all">
+              <Package className="w-16 h-16 text-blue-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[8px] font-black text-blue-600/60 uppercase tracking-[0.2em] mb-1">Total Produk</p>
-              <h3 className="text-2xl font-black text-blue-600 tracking-tight">{products.length}</h3>
-              <p className="text-[8px] font-bold text-blue-600/40 mt-1">{totalStock} Item</p>
+              <p className="text-[10px] font-black text-blue-600/60 uppercase tracking-[0.2em] mb-1">Total Produk</p>
+              <h3 className="text-3xl font-black text-blue-600 tracking-tight">{products.length}</h3>
+            </div>
+            <div className="relative z-10 flex items-center gap-2 mt-auto">
+              <Badge className="bg-blue-600/10 text-blue-600 border-none text-[8px] font-bold h-5">{totalStock.toLocaleString("id-ID")} Item</Badge>
             </div>
           </Card>
 
-          <Card className="p-4 border-none shadow-sm bg-rose-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-rose-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
-              <Info className="w-12 h-12 text-rose-500" />
+          <Card className="p-6 border-none shadow-sm bg-rose-500/5 backdrop-blur-md relative overflow-hidden group hover:bg-rose-500/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 group-hover:-rotate-12 transition-all">
+              <Info className="w-16 h-16 text-rose-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[8px] font-black text-rose-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
-              <h3 className="text-2xl font-black text-rose-600 tracking-tight">{outOfStockCount}</h3>
-              <p className="text-[8px] font-bold text-rose-600/40 mt-1">Perlu restok</p>
+              <p className="text-[10px] font-black text-rose-600/60 uppercase tracking-[0.2em] mb-1">Stok Habis</p>
+              <h3 className="text-3xl font-black text-rose-600 tracking-tight">{outOfStockCount}</h3>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <p className="text-[8px] font-bold text-rose-600/40 uppercase tracking-widest">Perlu perhatian segera</p>
             </div>
           </Card>
 
-          <Card className="col-span-2 p-4 border-none shadow-sm bg-emerald-500/5 backdrop-blur-sm relative overflow-hidden group hover:bg-emerald-500/10 transition-colors">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
-              <Tag className="w-12 h-12 text-emerald-500" />
+          <Card className="p-6 border-none shadow-sm bg-emerald-500/5 backdrop-blur-md relative overflow-hidden group hover:bg-emerald-500/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-all">
+              <TrendingUp className="w-16 h-16 text-emerald-500" />
             </div>
             <div className="relative z-10">
-              <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-[0.2em] mb-1">Nilai Inventori</p>
-              <h3 className="text-xl font-black text-emerald-600 tracking-tight">Rp {totalValue.toLocaleString("id-ID")}</h3>
-              <p className="text-[8px] font-bold text-emerald-600/40 mt-1">Estimasi nilai jual</p>
+              <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.2em] mb-1">Nilai Inventori</p>
+              <h3 className="text-xl lg:text-2xl font-black text-emerald-600 tracking-tight truncate">Rp {totalValue.toLocaleString("id-ID")}</h3>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <p className="text-[8px] font-bold text-emerald-600/40 uppercase tracking-widest">Estimasi nilai aset jual</p>
+            </div>
+          </Card>
+
+          <Card className="p-6 border-none shadow-sm bg-primary/5 backdrop-blur-md relative overflow-hidden group hover:bg-primary/10 transition-all duration-300 rounded-[2rem] flex flex-col justify-between min-h-[140px]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-all">
+              <Building2 className="w-16 h-16 text-primary" />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Mitra</p>
+              <h3 className="text-3xl font-black text-primary tracking-tight">{suppliers?.length || 0}</h3>
+            </div>
+            <div className="relative z-10 mt-auto">
+              <p className="text-[8px] font-bold text-primary/40 uppercase tracking-widest">Supplier Terdaftar</p>
             </div>
           </Card>
         </div>
 
-        {/* Bento Table */}
-        <div className="w-full">
-          <ProductTableHeader />
-          {filtered?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-6 text-center">
-              <div className="w-24 h-24 rounded-[3rem] bg-muted/30 flex items-center justify-center relative">
-                <Package className="w-12 h-12 text-muted-foreground/20" />
-                <div className="absolute inset-0 rounded-[3rem] border border-dashed border-muted-foreground/20 animate-pulse" />
+        {/* Panel Grid */}
+        <div className={cn("grid grid-cols-1 gap-8 items-start", profile?.businessType === "FNB" ? "xl:grid-cols-1" : "xl:grid-cols-3")}>
+          {/* Panel 1: Products */}
+          <div className={cn("space-y-4", profile?.businessType === "FNB" ? "" : "xl:col-span-2")}>
+            <div className="flex items-center justify-between px-2 bg-card/50 p-3 rounded-[2rem] border border-border/50">
+              <div className="flex items-center gap-3 ml-2">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-foreground uppercase tracking-tight">Daftar {terms.product}</h3>
+                  <p className="text-[10px] font-bold text-muted-foreground">{filtered?.length || 0} Item Tersedia</p>
+                </div>
               </div>
-              <p className="text-base font-black text-foreground uppercase tracking-widest">Produk Tidak Ditemukan</p>
-            </div>
-          ) : (
-            filtered?.map((p, idx) => (
-              <div 
-                key={p.id} 
-                className=""
-                style={{ animationDelay: `${idx * 30}ms` }}
+              <Button
+                onClick={() => handleOpenForm()}
+                className="h-10 rounded-xl gradient-primary text-white font-bold flex items-center gap-2 px-5 shadow-lg shadow-primary/20"
               >
-                <ProductBentoRow
-                  product={p}
-                  supplierName={suppliers?.find(s => s.id === p.supplierId)?.name}
-                  onEdit={handleOpenForm}
-                  onDelete={handleDelete}
-                  onRestock={(prod) => {
-                    setRestockProduct(prod);
-                    setRestockData({ qty: 0, buyPrice: prod.cogs || 0 });
-                    setIsRestockOpen(true);
-                  }}
-                />
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Tambah {terms.product}</span>
+              </Button>
+            </div>
+
+            <div className="w-full">
+              <ProductTableHeader />
+              {filtered?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-6 text-center bg-card/50 rounded-[3rem] border border-dashed border-border/50">
+                  <div className="w-24 h-24 rounded-[3rem] bg-muted/30 flex items-center justify-center relative">
+                    <Package className="w-12 h-12 text-muted-foreground/20" />
+                    <div className="absolute inset-0 rounded-[3rem] border border-dashed border-muted-foreground/20 animate-pulse" />
+                  </div>
+                  <p className="text-base font-black text-foreground uppercase tracking-widest">Produk Tidak Ditemukan</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {filtered?.map((p, idx) => (
+                    <ProductBentoRow
+                      key={p.id}
+                      product={p}
+                      supplierName={suppliers?.find(s => s.id === p.supplierId)?.name}
+                      onEdit={handleOpenForm}
+                      onDelete={handleDelete}
+                      onRestock={(prod) => {
+                        setRestockProduct(prod);
+                        setRestockData({ qty: 0, buyPrice: prod.cogs || 0 });
+                        setNewSellingPrice(prod.sellingPrice);
+                        setIsRestockOpen(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Panel 2: Suppliers */}
+          {profile?.businessType !== "FNB" ? (
+            <div className="xl:col-span-1 space-y-4">
+              <div className="flex items-center justify-between px-2 bg-card/50 p-3 rounded-[2rem] border border-border/50">
+                <div className="flex items-center gap-3 ml-2">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-foreground uppercase tracking-tight">Mitra Supplier</h3>
+                  <p className="text-[10px] font-bold text-muted-foreground">{filteredSuppliers?.length || 0} Mitra</p>
+                </div>
               </div>
-            ))
-          )}
+              <Button
+                onClick={() => handleOpenSupplierForm()}
+                className="w-10 h-10 rounded-xl gradient-primary text-white font-bold flex items-center justify-center shadow-lg shadow-primary/20"
+              >
+                <Plus className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {filteredSuppliers?.length === 0 ? (
+                <div className="py-16 text-center space-y-4 bg-card/50 rounded-[2.5rem] border border-dashed border-border/50">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">
+                    <Building2 className="w-8 h-8 text-muted-foreground/30" />
+                  </div>
+                  <h3 className="text-sm font-black text-foreground uppercase tracking-tighter">Belum Ada Mitra</h3>
+                </div>
+              ) : (
+                filteredSuppliers?.map(s => (
+                  <Card key={s.id} className="card-elevated p-4 border-none bg-card rounded-3xl group transition-all hover:shadow-xl">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-[0.8rem] bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-black truncate">{s.name}</h4>
+                            <p className="text-[10px] text-muted-foreground font-bold">{s.contact || "No Contact"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={(e) => { e.stopPropagation(); handleOpenSupplierForm(s); }} className="w-8 h-8 rounded-lg hover:bg-blue-500/10 text-blue-500 flex items-center justify-center transition-colors">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(s.id); }} className="w-8 h-8 rounded-lg hover:bg-rose-500/10 text-rose-500 flex items-center justify-center transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {s.address && (
+                        <div className="px-3 py-2 bg-muted/40 rounded-xl text-[10px] text-muted-foreground line-clamp-2">
+                          <MapPin className="w-3 h-3 inline mr-1" /> {s.address}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+          ) : null}
         </div>
       </div>
 
@@ -460,30 +629,75 @@ export default function ProductsPage() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-foreground uppercase ml-1">Harga Beli per {restockProduct.unit || "Pcs"}</label>
                     <Input
-                      type="number"
-                      value={restockData.buyPrice || ""}
-                      onChange={(e) => setRestockData({ ...restockData, buyPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
+                      type="text"
+                      inputMode="numeric"
+                      value={restockData.buyPrice ? restockData.buyPrice.toLocaleString("id-ID") : ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setRestockData({ ...restockData, buyPrice: val ? Number(val) : 0 });
+                      }}
                       placeholder="0"
                       className="h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-lg text-emerald-600"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-foreground uppercase ml-1">Harga Jual Baru (Opsional)</label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={newSellingPrice ? newSellingPrice.toLocaleString("id-ID") : ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setNewSellingPrice(val ? Number(val) : 0);
+                      }}
+                      placeholder="0"
+                      className="h-14 px-6 rounded-2xl bg-primary/10 border-none font-black text-lg text-primary"
+                    />
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-2">
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border/10 space-y-3">
                   <div className="flex justify-between items-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     <span>HPP Saat Ini</span>
                     <span className="text-foreground">Rp {(restockProduct.cogs || 0).toLocaleString("id-ID")}</span>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] font-black text-primary uppercase tracking-widest pt-1 border-t border-primary/10">
+                  <div className="flex justify-between items-center text-[10px] font-black text-foreground uppercase tracking-widest pt-2 border-t border-border/10">
                     <span>Estimasi HPP Baru</span>
-                    <span>
-                      Rp {calculateWeightedAverage(
-                        restockProduct.stock,
-                        restockProduct.cogs || 0,
-                        restockData.qty,
-                        restockData.buyPrice
-                      ).toLocaleString("id-ID")}
+                    <span className="text-blue-600">
+                      Rp {(() => {
+                        const estimated = calculateWeightedAverage(
+                          restockProduct.stock,
+                          restockProduct.cogs || 0,
+                          restockData.qty,
+                          restockData.buyPrice
+                        );
+                        return estimated.toLocaleString("id-ID");
+                      })()}
                     </span>
+                  </div>
+                  
+                  <div className="pt-2 border-t border-border/10 space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-black text-foreground uppercase tracking-widest">
+                      <span>Harga Jual</span>
+                      <span>Rp {(newSellingPrice || restockProduct.sellingPrice).toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estimasi Margin</span>
+                      <Badge variant={(newSellingPrice || restockProduct.sellingPrice) - calculateWeightedAverage(restockProduct.stock, restockProduct.cogs || 0, restockData.qty, restockData.buyPrice) > 0 ? "success" : "destructive"} className="text-[9px] font-black">
+                        {(() => {
+                          const estimatedHPP = calculateWeightedAverage(
+                            restockProduct.stock,
+                            restockProduct.cogs || 0,
+                            restockData.qty,
+                            restockData.buyPrice
+                          );
+                          const sellPrice = newSellingPrice || restockProduct.sellingPrice;
+                          const profit = sellPrice - estimatedHPP;
+                          const marginPercent = sellPrice > 0 ? (profit / sellPrice) * 100 : 0;
+                          return `Rp ${profit.toLocaleString("id-ID")} (${marginPercent.toFixed(1)}%)`;
+                        })()}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
 
@@ -585,8 +799,10 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">Kategori & Pemasok</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest px-1">
+                  {profile?.businessType === "FNB" ? "Kategori" : "Kategori & Pemasok"}
+                </p>
+                <div className={cn("grid grid-cols-1 gap-4", profile?.businessType === "FNB" ? "" : "sm:grid-cols-2")}>
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold text-foreground/60 ml-1">Kategori</p>
                     <select
@@ -598,17 +814,19 @@ export default function ProductsPage() {
                       {categories?.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-foreground/60 ml-1">Pemasok</p>
-                    <select
-                      className="w-full h-12 px-4 rounded-xl bg-muted/30 border-none outline-none text-sm appearance-none"
-                      value={formData.supplierId}
-                      onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
-                    >
-                      <option value="">Pilih Pemasok</option>
-                      {suppliers?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  </div>
+                  {profile?.businessType !== "FNB" && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold text-foreground/60 ml-1">Pemasok</p>
+                      <select
+                        className="w-full h-12 px-4 rounded-xl bg-muted/30 border-none outline-none text-sm appearance-none"
+                        value={formData.supplierId}
+                        onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
+                      >
+                        <option value="">Pilih Pemasok</option>
+                        {suppliers?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -618,19 +836,27 @@ export default function ProductsPage() {
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold text-foreground/60 ml-1">Harga Beli (Rp)</p>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       className="h-12 px-4 rounded-xl bg-muted/30 border-none"
-                      value={formData.cogs || ""}
-                      onChange={e => setFormData({ ...formData, cogs: e.target.value === "" ? 0 : Number(e.target.value) })}
+                      value={formData.cogs ? formData.cogs.toLocaleString("id-ID") : ""}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setFormData({ ...formData, cogs: val ? Number(val) : 0 });
+                      }}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-bold text-foreground/60 ml-1">Harga Jual (Rp)</p>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       className="h-12 px-4 rounded-xl bg-muted/30 border-none text-primary font-bold"
-                      value={formData.sellingPrice || ""}
-                      onChange={e => setFormData({ ...formData, sellingPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
+                      value={formData.sellingPrice ? formData.sellingPrice.toLocaleString("id-ID") : ""}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setFormData({ ...formData, sellingPrice: val ? Number(val) : 0 });
+                      }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -667,22 +893,87 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Success Toast */}
+      {/* Supplier Modal Form */}
       <AnimatePresence>
-        {showSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[500] px-6 py-3 bg-emerald-600 text-white rounded-2xl shadow-2xl shadow-emerald-500/20 flex items-center gap-3 border border-white/20 backdrop-blur-md"
-          >
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-black uppercase tracking-widest">Stok Berhasil Ditambah!</p>
-          </motion.div>
+        {isSupplierModalOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 lg:p-0">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSupplierModalOpen(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-card border border-border/50 rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-border/50 flex items-center justify-between bg-muted/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black text-foreground uppercase tracking-tighter">
+                      {editingSupplierId ? "Edit Mitra" : "Mitra Baru"}
+                    </h2>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                      Data Supplier
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setIsSupplierModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors text-muted-foreground">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveSupplier} className="p-6 lg:p-8 space-y-6">
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Nama Bisnis / PT</label>
+                    <Input
+                      required
+                      value={supplierFormData.name}
+                      onChange={e => setSupplierFormData({ ...supplierFormData, name: e.target.value })}
+                      placeholder="Contoh: PT. Sumber Makmur"
+                      className="h-14 px-6 rounded-2xl bg-muted/40 border-none font-bold text-base focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Kontak / No. WhatsApp</label>
+                    <Input
+                      value={supplierFormData.contact}
+                      onChange={e => setSupplierFormData({ ...supplierFormData, contact: e.target.value })}
+                      placeholder="08xx xxxx xxxx"
+                      className="h-14 px-6 rounded-2xl bg-muted/40 border-none font-bold text-base focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Alamat Lengkap (Opsional)</label>
+                    <textarea
+                      value={supplierFormData.address}
+                      onChange={e => setSupplierFormData({ ...supplierFormData, address: e.target.value })}
+                      placeholder="Masukkan alamat lengkap..."
+                      className="w-full min-h-[120px] p-6 rounded-2xl bg-muted/40 border-none font-bold text-sm outline-none focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-16 rounded-[2rem] gradient-primary text-white font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all mt-4"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                  {editingSupplierId ? "Simpan Perubahan" : "Simpan Mitra Baru"}
+                </Button>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

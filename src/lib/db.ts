@@ -12,6 +12,9 @@ export interface StoreProfile {
   businessType: 'FNB' | 'RETAIL' | 'GENERAL';
   useTable: boolean;
   usePhoneNumber: boolean;
+  spreadsheetId?: string; 
+  isGoogleConnected?: boolean;
+  lastCloudSync?: number;
 }
 
 export interface Category {
@@ -54,6 +57,7 @@ export interface Transaction {
   notes?: string;
   cashTendered?: number;
   cashChange?: number;
+  orderType?: 'DINE_IN' | 'TAKEAWAY';
 }
 
 export interface TransactionItem {
@@ -111,6 +115,10 @@ db.version(2).stores({
   products: 'id, sku, barcode, category, name',
   transactions: 'id, date, status, customerName',
   hppHistory: '++id, productId, createdAt'
+});
+
+db.version(4).stores({
+  storeProfile: 'id', // spreadsheetId, isGoogleConnected, lastCloudSync added
 });
 
 export default db;

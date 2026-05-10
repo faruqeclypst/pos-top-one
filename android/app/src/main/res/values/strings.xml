@@ -4,4 +4,5 @@
     <string name="title_activity_main">TokoKu</string>
     <string name="package_name">com.tokokupos.app</string>
     <string name="custom_url_scheme">com.tokokupos.app</string>
+    <string name="google_server_client_id">957204893367-j1ub6tif1rtoh7kiqig3m11s7q8aagiu.apps.googleusercontent.com</string>
 </resources>
