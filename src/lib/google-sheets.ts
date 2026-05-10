@@ -15,6 +15,16 @@ export function initGoogleApi(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = new Promise<void>(async (resolvePromise) => {
+    // Timeout fallback - don't block if Google scripts take too long
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn("initGoogleApi timeout - continuing without Google API");
+        resolvePromise();
+      }
+    }, 5000);
+
     // 0. Initialize Capacitor Google Auth
     try {
       await GoogleAuth.initialize({
@@ -28,7 +38,11 @@ export function initGoogleApi(): Promise<void> {
 
     // 1. Skip web-only script checks if on native
     if (Capacitor.isNativePlatform()) {
-      resolvePromise();
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolvePromise();
+      }
       return;
     }
 
@@ -36,7 +50,11 @@ export function initGoogleApi(): Promise<void> {
     await new Promise<void>((resolve) => {
       const check = () => {
         if ((window as any).gapi?.load && (window as any).google?.accounts?.oauth2) {
-          resolve();
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            resolve();
+          }
         } else {
           setTimeout(check, 100);
         }
@@ -45,34 +63,54 @@ export function initGoogleApi(): Promise<void> {
     });
 
     if (gapiInited && gsisInited) {
-      resolvePromise();
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolvePromise();
+      }
       return;
     }
 
     // 2. Initialize GAPI Client
     (window as any).gapi.load('client', async () => {
-      await (window as any).gapi.client.init({
-        discoveryDocs: [
-          "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
-          "https://sheets.googleapis.com/$discovery/rest?version=v4"
-        ],
-      });
-      gapiInited = true;
-      if (gsisInited) resolvePromise();
+      try {
+        await (window as any).gapi.client.init({
+          discoveryDocs: [
+            "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+            "https://sheets.googleapis.com/$discovery/rest?version=v4"
+          ],
+        });
+        gapiInited = true;
+      } catch (e) {
+        console.warn("GAPI client init failed", e);
+      }
+      if (!resolved && gsisInited) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolvePromise();
+      }
     });
 
     // 3. Initialize Google Identity Services
-    tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: (resp: any) => {
-        if (resp.access_token) {
-          currentAccessToken = resp.access_token;
-        }
-      },
-    });
-    gsisInited = true;
-    if (gapiInited) resolvePromise();
+    try {
+      tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (resp: any) => {
+          if (resp.access_token) {
+            currentAccessToken = resp.access_token;
+          }
+        },
+      });
+      gsisInited = true;
+    } catch (e) {
+      console.warn("GSIS init failed", e);
+    }
+    if (!resolved && gapiInited) {
+      resolved = true;
+      clearTimeout(timeout);
+      resolvePromise();
+    }
   });
 
   return initPromise;
