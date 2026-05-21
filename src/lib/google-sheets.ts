@@ -244,6 +244,8 @@ export async function syncAllToCloud(spreadsheetId: string, accessToken?: string
   const transactions = await db.transactions.toArray();
   const transactionItems = await db.transactionItems.toArray();
   const storeProfile = await db.storeProfile.toArray();
+  const suppliers = await db.suppliers.toArray();
+  const tableFloors = await db.tableFloors.toArray();
 
   const compressBlobToBase64 = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -323,7 +325,9 @@ export async function syncAllToCloud(spreadsheetId: string, accessToken?: string
         })) 
       },
       { name: 'TransactionItems', data: transactionItems },
-      { name: 'Profile', data: storeProfile }
+      { name: 'Profile', data: storeProfile },
+      { name: 'Suppliers', data: suppliers },
+      { name: 'TableFloors', data: tableFloors }
     ];
 
     // 2. Create missing sheets
@@ -400,13 +404,19 @@ export async function downloadFromCloud(spreadsheetId: string, accessToken?: str
         const headers = rows[0];
         return rows.slice(1).map((row: any[]) => {
           const obj: any = {};
+          // Fields that should always remain as strings
+          const stringFields = ['id', 'tableNumber', 'customerPhone', 'phone', 'sku', 'barcode', 'referenceId', 'transactionId', 'productId', 'supplierId'];
           headers.forEach((h: string, i: number) => {
             let val = row[i];
             // Simple type restoration
             if (val === "true") val = true;
             if (val === "false") val = false;
-            // Handle number-like strings that should stay strings (IDs like TRX-123)
-            if (val !== "" && !isNaN(val) && !String(val).includes('-') && !String(val).startsWith('0')) {
+            // Keep known string fields as strings
+            else if (stringFields.includes(h)) {
+              // leave as string
+            }
+            // Handle number-like strings that should stay strings (IDs like TRX-123, PROD-xxx)
+            else if (val !== "" && val !== undefined && !isNaN(val) && !String(val).includes('-') && !String(val).startsWith('0')) {
               val = Number(val);
             }
             obj[h] = val;

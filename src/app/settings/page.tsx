@@ -276,6 +276,7 @@ export default function SettingsPage() {
         transactionItems: await db.transactionItems.toArray(),
         stockMutations: await db.stockMutations.toArray(),
         hppHistory: await db.hppHistory.toArray(),
+        tableFloors: await db.tableFloors.toArray(),
       };
 
       const jsonString = JSON.stringify(data);
@@ -328,7 +329,7 @@ export default function SettingsPage() {
 
       await db.transaction( 'rw', [
         db.storeProfile, db.categories, db.products, db.suppliers, 
-        db.transactions, db.transactionItems, db.stockMutations, db.hppHistory
+        db.transactions, db.transactionItems, db.stockMutations, db.hppHistory, db.tableFloors
       ], async () => {
         // Clear existing
         await Promise.all([
@@ -340,6 +341,7 @@ export default function SettingsPage() {
           db.transactionItems.clear(),
           db.stockMutations.clear(),
           db.hppHistory.clear(),
+          db.tableFloors.clear(),
         ]);
 
         // Restore with blob conversion
@@ -366,6 +368,7 @@ export default function SettingsPage() {
         if (parsed.transactionItems) await db.transactionItems.bulkAdd(parsed.transactionItems);
         if (parsed.stockMutations) await db.stockMutations.bulkAdd(parsed.stockMutations);
         if (parsed.hppHistory) await db.hppHistory.bulkAdd(parsed.hppHistory);
+        if (parsed.tableFloors) await db.tableFloors.bulkAdd(parsed.tableFloors);
       });
 
       alert("Restore berhasil! Aplikasi akan memuat ulang.");

@@ -338,13 +338,17 @@ export default function POSPage() {
   const updateCartQty = useCallback((id: string, delta: number) => {
     setCart(prev => prev
       .map(i => {
+        if (i.id !== id) return i;
         const trackStock = i.trackStock ?? true;
+        const newQty = i.cartQty + delta;
+        // Allow removal (qty 0) for all products
+        if (newQty <= 0) return { ...i, cartQty: 0 };
         // For products with stock tracking, limit by available stock
         if (trackStock) {
-          return { ...i, cartQty: Math.min(i.cartQty + delta, i.stock) };
+          return { ...i, cartQty: Math.min(newQty, i.stock) };
         }
         // For products without stock tracking, allow unlimited qty
-        return { ...i, cartQty: Math.max(i.cartQty + delta, 1) };
+        return { ...i, cartQty: newQty };
       })
       .filter(i => i.cartQty > 0)
     );
@@ -400,7 +404,11 @@ export default function POSPage() {
           // Only reduce stock for products with trackStock enabled
           const trackStock = item.trackStock ?? true;
           if (trackStock) {
-            await db.products.update(item.id, { stock: item.stock - item.cartQty });
+            // Read real-time stock from DB to prevent negative stock
+            const currentProduct = await db.products.get(item.id);
+            const currentStock = currentProduct?.stock ?? 0;
+            const newStock = Math.max(0, currentStock - item.cartQty);
+            await db.products.update(item.id, { stock: newStock });
             await db.stockMutations.put({ 
               productId: item.id, 
               type: "OUT", 

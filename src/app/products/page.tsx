@@ -63,7 +63,16 @@ function ProductBentoRow({ product, onEdit, onDelete, onRestock, onToggleActive,
   supplierName?: string;
   index: number;
 }) {
-  const [imageUrl] = useState(() => product.image ? URL.createObjectURL(product.image) : null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (product.image) {
+      const url = URL.createObjectURL(product.image);
+      setImageUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [product.image]);
+
   const stockStatus = product.stock <= 0 ? "error" : product.stock <= 5 ? "warning" : "success";
   const isFNB = useStoreProfile()?.profile?.businessType === "FNB";
   const trackStock = product.trackStock ?? true;

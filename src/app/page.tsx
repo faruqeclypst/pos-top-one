@@ -41,7 +41,8 @@ export default function DashboardPage() {
   const transactions = useLiveQuery(async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return db.transactions.where("date").aboveOrEqual(today.getTime()).toArray();
+    const all = await db.transactions.where("date").aboveOrEqual(today.getTime()).toArray();
+    return all.filter(t => t.status === "SETTLEMENT");
   });
   const productCount = useLiveQuery(() => db.products.count());
   const supplierCount = useLiveQuery(() => db.suppliers.count());
