@@ -216,6 +216,7 @@ export default function POSPage() {
   const [activeTab, setActiveTab] = useState<"MENU" | "MEJA">("MENU");
   const receiptRef = useRef<HTMLDivElement>(null);
   const { profile } = useStoreProfile();
+  const tableFloors = useLiveQuery(() => db.tableFloors.orderBy('order').toArray());
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [tableNumber, setTableNumber] = useState("");
@@ -229,6 +230,7 @@ export default function POSPage() {
   const [isBillSavedOpen, setIsBillSavedOpen] = useState(false);
   const [billSavedInfo, setBillSavedInfo] = useState<{ table?: string }>({});
   const [dragSource, setDragSource] = useState<string | null>(null);
+  const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
 
   const confirm = useConfirm();
 
@@ -771,108 +773,171 @@ export default function POSPage() {
                 </div>
               )
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6 pb-10">
-                {Array.from({ length: 20 }, (_, i) => {
-                  const num = (i + 1).toString();
-                  const bill = openBills?.find(b => b.tableNumber === num);
-                  const isActive = num === tableNumber;
-                  const isOccupied = !!bill || isActive;
-                  
-                  const elapsedMinutes = isOccupied && bill ? Math.floor((Date.now() - bill.date) / 60000) : 0;
-                  const timeString = elapsedMinutes > 60 ? `${Math.floor(elapsedMinutes / 60)}j ${elapsedMinutes % 60}m` : `${elapsedMinutes}m`;
-
-                  // Get items for this bill to show a summary preview
-                  const itemsForBill = openBillItems?.filter(i => i.transactionId === bill?.id) || [];
-                  const firstItem = itemsForBill.length > 0 ? itemsForBill[0] : null;
-                  const firstItemProduct = firstItem ? products?.find(p => p.id === firstItem.productId) : null;
-
-                  return (
-                    <div
-                      key={num}
-                      draggable={isOccupied}
-                      onDragStart={(e) => { setDragSource(num); e.dataTransfer.effectAllowed = 'move'; }}
-                      onDragEnd={() => setDragSource(null)}
-                      onDragOver={(e) => { if (isOccupied || isActive) return; e.preventDefault(); }}
-                      onDrop={(e) => { e.preventDefault(); handleTableDrop(num); }}
-                      onClick={() => handleTableClick(num)}
+              <div className="space-y-6 pb-10">
+                {/* Floor selector tabs */}
+                {tableFloors && tableFloors.length > 1 && (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setSelectedFloor(null)}
                       className={cn(
-                        "relative flex flex-col p-4 rounded-xl cursor-pointer transition-all duration-200 border-2",
-                        isOccupied
-                          ? "bg-primary/10 border-primary/30 hover:border-primary/50 shadow-sm"
-                          : "bg-background border-border border-dashed hover:border-primary/40 hover:bg-primary/5",
-                        isActive && "border-solid border-primary bg-primary/15 shadow-md scale-[1.02]",
-                        dragSource === num && "opacity-50"
+                        "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2",
+                        selectedFloor === null
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/50 bg-muted/30 text-muted-foreground hover:border-primary/30"
                       )}
                     >
-                      {/* Top Header */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg",
-                            isOccupied || isActive ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
-                          )}>
-                            {num}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className={cn(
-                              "text-[10px] font-bold uppercase tracking-widest leading-tight transition-colors",
-                              isActive ? "text-primary" : "text-muted-foreground"
-                            )}>Meja</span>
-                            {isActive ? (
-                              <span className="text-[9px] font-black text-primary leading-tight animate-pulse">AKTIF</span>
-                            ) : (
-                              <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-tight", isOccupied ? "text-primary/80" : "text-muted-foreground/60")}>
-                                {isOccupied ? "Terisi" : "Kosong"}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                      Semua
+                    </button>
+                    {tableFloors.map(floor => (
+                      <button
+                        key={floor.id}
+                        onClick={() => setSelectedFloor(floor.id!)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border-2",
+                          selectedFloor === floor.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border/50 bg-muted/30 text-muted-foreground hover:border-primary/30"
+                        )}
+                      >
+                        {floor.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                        {isOccupied && (
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background shadow-sm border border-border/50 text-[10px] font-bold text-muted-foreground">
-                            <Clock className="w-3 h-3 text-amber-500" />
-                            {timeString}
+                {/* Table grid - dynamic from tableFloors */}
+                {(!tableFloors || tableFloors.length === 0) ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+                    <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center">
+                      <Utensils className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-foreground">Meja belum diatur</p>
+                      <p className="text-xs text-muted-foreground max-w-[240px]">Silakan atur jumlah meja dan lantai di halaman <span className="font-bold text-primary">Pengaturan → Pengaturan Meja</span></p>
+                    </div>
+                  </div>
+                ) : (() => {
+                  const floorsToShow = selectedFloor ? tableFloors.filter(f => f.id === selectedFloor) : tableFloors;
+
+                  return floorsToShow.map(floor => {
+                    const startNum = tableFloors.filter(f => f.order < floor.order).reduce((sum, f) => sum + f.tableCount, 0) + 1;
+
+                    return (
+                      <div key={floor.id}>
+                        {(selectedFloor === null || floorsToShow.length === 1) && (
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                              <Utensils className="w-3 h-3 text-primary" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">{floor.name}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground/60">({floor.tableCount} meja)</span>
                           </div>
                         )}
+                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6 mb-6">
+                          {Array.from({ length: floor.tableCount }, (_, i) => {
+                            const num = (startNum + i).toString();
+                            const bill = openBills?.find(b => b.tableNumber === num);
+                            const isActive = num === tableNumber;
+                            const isOccupied = !!bill || isActive;
+                            
+                            const elapsedMinutes = isOccupied && bill ? Math.floor((Date.now() - bill.date) / 60000) : 0;
+                            const timeString = elapsedMinutes > 60 ? `${Math.floor(elapsedMinutes / 60)}j ${elapsedMinutes % 60}m` : `${elapsedMinutes}m`;
+
+                            const itemsForBill = openBillItems?.filter(i => i.transactionId === bill?.id) || [];
+                            const firstItem = itemsForBill.length > 0 ? itemsForBill[0] : null;
+                            const firstItemProduct = firstItem ? products?.find(p => p.id === firstItem.productId) : null;
+
+                            return (
+                              <div
+                                key={num}
+                                draggable={isOccupied}
+                                onDragStart={(e) => { setDragSource(num); e.dataTransfer.effectAllowed = 'move'; }}
+                                onDragEnd={() => setDragSource(null)}
+                                onDragOver={(e) => { if (isOccupied || isActive) return; e.preventDefault(); }}
+                                onDrop={(e) => { e.preventDefault(); handleTableDrop(num); }}
+                                onClick={() => handleTableClick(num)}
+                                className={cn(
+                                  "relative flex flex-col p-4 rounded-xl cursor-pointer transition-all duration-200 border-2",
+                                  isOccupied
+                                    ? "bg-primary/10 border-primary/30 hover:border-primary/50 shadow-sm"
+                                    : "bg-background border-border border-dashed hover:border-primary/40 hover:bg-primary/5",
+                                  isActive && "border-solid border-primary bg-primary/15 shadow-md scale-[1.02]",
+                                  dragSource === num && "opacity-50"
+                                )}
+                              >
+                                {/* Top Header */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className={cn(
+                                      "w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg",
+                                      isOccupied || isActive ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
+                                    )}>
+                                      {num}
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-widest leading-tight transition-colors",
+                                        isActive ? "text-primary" : "text-muted-foreground"
+                                      )}>Meja</span>
+                                      {isActive ? (
+                                        <span className="text-[9px] font-black text-primary leading-tight animate-pulse">AKTIF</span>
+                                      ) : (
+                                        <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-tight", isOccupied ? "text-primary/80" : "text-muted-foreground/60")}>
+                                          {isOccupied ? "Terisi" : "Kosong"}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {isOccupied && (
+                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background shadow-sm border border-border/50 text-[10px] font-bold text-muted-foreground">
+                                      <Clock className="w-3 h-3 text-amber-500" />
+                                      {timeString}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Content */}
+                                {isOccupied ? (
+                                  <div className="mt-auto space-y-2">
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80 bg-background/50 p-1.5 rounded-md">
+                                      <User className="w-3.5 h-3.5 text-primary opacity-70 shrink-0" />
+                                      <span className="truncate">{bill?.customerName || (isActive ? activeTableSnapshot?.name : "Tamu Reguler") || "Tamu Reguler"}</span>
+                                    </div>
+                                    
+                                    {(firstItemProduct || (isActive && activeTableSnapshot !== null)) && (
+                                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-medium px-1 truncate">
+                                        <Package className="w-3 h-3 shrink-0" />
+                                        <span className="truncate">{firstItemProduct?.name || (isActive && activeTableSnapshot ? activeTableSnapshot.items[0] : "")}</span>
+                                        {(isActive && activeTableSnapshot ? activeTableSnapshot.items.length > 1 : itemsForBill.length > 1) && (
+                                          <span className="shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md">+{(isActive && activeTableSnapshot ? activeTableSnapshot.items.length : itemsForBill.length) - 1}</span>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between pt-2 border-t border-primary/20">
+                                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tagihan</span>
+                                      <span className="text-sm font-black text-primary">Rp {(bill?.total || (isActive ? activeTableSnapshot?.total : 0) || 0).toLocaleString("id-ID")}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="mt-auto pt-3 flex items-center justify-center">
+                                    <span className={cn(
+                                      "text-[11px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5",
+                                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                                    )}>
+                                      <Plus className="w-3.5 h-3.5" /> Buka Meja
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-
-                      {/* Content */}
-                      {isOccupied ? (
-                        <div className="mt-auto space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80 bg-background/50 p-1.5 rounded-md">
-                            <User className="w-3.5 h-3.5 text-primary opacity-70 shrink-0" />
-                            <span className="truncate">{bill?.customerName || (isActive ? activeTableSnapshot?.name : "Tamu Reguler") || "Tamu Reguler"}</span>
-                          </div>
-                          
-                          {/* First Item Summary Preview */}
-                          {(firstItemProduct || (isActive && activeTableSnapshot !== null)) && (
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80 font-medium px-1 truncate">
-                              <Package className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{firstItemProduct?.name || (isActive && activeTableSnapshot ? activeTableSnapshot.items[0] : "")}</span>
-                              {(isActive && activeTableSnapshot ? activeTableSnapshot.items.length > 1 : itemsForBill.length > 1) && (
-                                <span className="shrink-0 font-bold bg-muted px-1.5 py-0.5 rounded-md">+{(isActive && activeTableSnapshot ? activeTableSnapshot.items.length : itemsForBill.length) - 1}</span>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between pt-2 border-t border-primary/20">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tagihan</span>
-                            <span className="text-sm font-black text-primary">Rp {(bill?.total || (isActive ? activeTableSnapshot?.total : 0) || 0).toLocaleString("id-ID")}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-auto pt-3 flex items-center justify-center">
-                          <span className={cn(
-                            "text-[11px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5",
-                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                          )}>
-                            <Plus className="w-3.5 h-3.5" /> Buka Meja
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>

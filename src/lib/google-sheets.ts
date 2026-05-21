@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { GoogleAuth } from "@codetrix-studio/capacitor-google-auth";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-const SCOPES = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file";
+const SCOPES = "openid email profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file";
 
 let tokenClient: any = null;
 let gapiInited = false;
@@ -192,18 +192,24 @@ export async function findOrCreateSpreadsheet(accessToken: string) {
   await ensureGapiLoaded(accessToken);
   const gapi = (window as any).gapi;
   
+  console.log("findOrCreateSpreadsheet called with token");
+  
   // 1. Search for existing spreadsheet
   const response = await gapi.client.drive.files.list({
     q: "name = 'TokoKu POS Database' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
-    fields: 'files(id, name)',
+    fields: 'files(id, name, createdTime, owners)',
   });
 
   const files = response.result.files;
+  console.log("Found spreadsheets:", files);
+  
   if (files && files.length > 0) {
+    console.log("Using existing spreadsheet:", files[0]);
     return files[0].id;
   }
 
   // 2. Create new if not found
+  console.log("No existing spreadsheet found, creating new one...");
   const createResponse = await gapi.client.sheets.spreadsheets.create({
     resource: {
       properties: {
@@ -219,12 +225,19 @@ export async function findOrCreateSpreadsheet(accessToken: string) {
     },
   });
 
+  console.log("New spreadsheet created:", createResponse.result);
   return createResponse.result.spreadsheetId;
 }
 
-export async function syncAllToCloud(spreadsheetId: string) {
-  await ensureGapiLoaded(currentAccessToken || undefined);
+export async function syncAllToCloud(spreadsheetId: string, accessToken?: string) {
+  const token = accessToken || currentAccessToken;
+  await ensureGapiLoaded(token || undefined);
   const gapi = (window as any).gapi;
+  
+  // Pastikan token di-set ke gapi client
+  if (token) {
+    gapi.client.setToken({ access_token: token });
+  }
   
   const products = await db.products.toArray();
   const categories = await db.categories.toArray();
@@ -351,9 +364,28 @@ export async function syncAllToCloud(spreadsheetId: string) {
   }
 }
 
-export async function downloadFromCloud(spreadsheetId: string) {
-  await ensureGapiLoaded(currentAccessToken || undefined);
+export async function downloadFromCloud(spreadsheetId: string, accessToken?: string) {
+  // Gunakan token yang diberikan atau ambil dari currentAccessToken/localStorage
+  const token = accessToken || currentAccessToken || localStorage.getItem('google_access_token');
+  
+  if (!token) {
+    console.error("No access token available for download");
+    return false;
+  }
+  
+  console.log("downloadFromCloud called with spreadsheetId:", spreadsheetId);
+  console.log("Using token from:", accessToken ? "parameter" : currentAccessToken ? "currentAccessToken" : "localStorage");
+  
+  await ensureGapiLoaded(token);
   const gapi = (window as any).gapi;
+  
+  if (!gapi?.client) {
+    console.error("GAPI client not initialized");
+    return false;
+  }
+  
+  // Pastikan token di-set ke gapi client
+  gapi.client.setToken({ access_token: token });
   
   try {
     const getSheetData = async (range: string) => {
@@ -381,17 +413,27 @@ export async function downloadFromCloud(spreadsheetId: string) {
           });
           return obj;
         });
-      } catch (e) {
-        console.warn(`Error reading range ${range}:`, e);
-        return [];
+      } catch (e: any) {
+        console.error(`Error reading range ${range}:`, e);
+        // Jika error 404, sheet belum ada - return empty array
+        if (e?.result?.error?.code === 404) {
+          console.log(`Sheet not found for ${range}, returning empty array`);
+          return [];
+        }
+        throw e;
       }
     };
 
     const cloudProducts = await getSheetData('Products!A1:Z');
+    console.log("Products data from cloud:", cloudProducts.length, "rows");
     const cloudCategories = await getSheetData('Categories!A1:Z');
+    console.log("Categories data from cloud:", cloudCategories.length, "rows");
     const cloudTransactions = await getSheetData('Transactions!A1:Z');
+    console.log("Transactions data from cloud:", cloudTransactions.length, "rows");
     const cloudItems = await getSheetData('TransactionItems!A1:Z');
+    console.log("TransactionItems data from cloud:", cloudItems.length, "rows");
     const cloudProfile = await getSheetData('Profile!A1:Z');
+    console.log("Profile data from cloud:", cloudProfile.length, "rows");
 
     const base64ToBlob = (base64: string): Blob | null => {
       if (!base64 || !base64.startsWith('data:image')) return null;
@@ -410,37 +452,68 @@ export async function downloadFromCloud(spreadsheetId: string) {
     await db.transaction('rw', [db.products, db.categories, db.transactions, db.transactionItems, db.storeProfile], async () => {
       if (cloudCategories.length > 0) {
         await db.categories.clear();
-        await db.categories.bulkAdd(cloudCategories);
+        // Filter out categories without valid id and assign auto-increment
+        const validCategories = cloudCategories.filter((c: any) => c.id != null && c.id !== '');
+        if (validCategories.length > 0) {
+          await db.categories.bulkAdd(validCategories);
+        }
       }
       if (cloudProducts.length > 0) {
         await db.products.clear();
-        await db.products.bulkAdd(cloudProducts.map((p: any) => ({ 
+        // Filter out products without valid id
+        const validProducts = cloudProducts.filter((p: any) => p.id && p.id !== '');
+        await db.products.bulkAdd(validProducts.map((p: any) => ({ 
           ...p, 
           image: p.image && typeof p.image === 'string' ? base64ToBlob(p.image) : null 
         })));
       }
       if (cloudTransactions.length > 0) {
         await db.transactions.clear();
-        await db.transactions.bulkAdd(cloudTransactions);
+        await db.transactions.bulkPut(cloudTransactions);
       }
       if (cloudItems.length > 0) {
         await db.transactionItems.clear();
-        await db.transactionItems.bulkAdd(cloudItems);
+        // Filter out items without valid transactionId
+        const validItems = cloudItems.filter((i: any) => i.transactionId && i.productId);
+        if (validItems.length > 0) {
+          await db.transactionItems.bulkAdd(validItems);
+        }
       }
       if (cloudProfile.length > 0) {
+        // Ambil profile yang ada untuk mempertahankan email
+        const existingProfile = await db.storeProfile.get(1);
         await db.storeProfile.put({ 
           ...cloudProfile[0], 
           id: 1, 
           isGoogleConnected: true, 
           spreadsheetId, 
-          isOnboarded: true 
+          isOnboarded: true,
+          email: existingProfile?.email || cloudProfile[0].email, // Pertahankan email
         });
       }
     });
 
-    return true;
-  } catch (error) {
+    console.log("Download from cloud successful");
+    
+    // Return true only if at least one data type has content
+    const hasData = cloudProducts.length > 0 || cloudCategories.length > 0 || 
+                    cloudTransactions.length > 0 || cloudItems.length > 0;
+    
+    return hasData;
+  } catch (error: any) {
     console.error("Download error:", error);
+    // Log lebih detail jika tersedia
+    const errorMessage = error?.result?.error?.message 
+      || error?.message 
+      || error?.toString() 
+      || "Error tidak diketahui";
+    console.error("Google API error details:", {
+      code: error?.result?.error?.code,
+      status: error?.status,
+      details: error?.result?.error?.details,
+      fullError: error
+    });
+    alert("Gagal menarik data: " + errorMessage);
     return false;
   }
 }

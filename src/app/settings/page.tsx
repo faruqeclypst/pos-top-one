@@ -7,8 +7,8 @@ import { useFontSize } from "@/components/FontSizeProvider";
 import { useConfirm } from "@/hooks/useConfirm";
 import { 
   Store, Palette, Database, Download, Upload, Sun, Moon, 
-  ChevronRight, Info, Trash2, RotateCcw, Tag, Plus, X, Globe, Bell,
-  MapPin, Package, Building2, Type, Cloud
+  ChevronRight, Info, Trash2, RotateCcw, Tag, Plus, X, Globe,
+  MapPin, Package, Building2, Cloud, Layers, Minus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import db from "@/lib/db";
@@ -97,6 +97,16 @@ export default function SettingsPage() {
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [restoreSuccess, setRestoreSuccess] = useState(false);
 
+  // Table/Floor management
+  const tableFloors = useLiveQuery(() => db.tableFloors.orderBy('order').toArray());
+  const [newFloorName, setNewFloorName] = useState("");
+  const [newFloorTableCount, setNewFloorTableCount] = useState(10);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Settings profile:", profile);
+  }, [profile]);
+
   useEffect(() => {
     initGoogleApi();
   }, []);
@@ -124,24 +134,33 @@ export default function SettingsPage() {
     setIsSyncing(true);
     try {
       const token = await loginGoogle();
-      const success = await syncAllToCloud(profile.spreadsheetId);
+      if (!token) {
+        alert("Gagal login ke Google. Silakan coba lagi.");
+        return;
+      }
+      // Gunakan token yang baru didapat untuk sync
+      const success = await syncAllToCloud(profile.spreadsheetId, token);
       if (success) {
         await saveProfile({ lastCloudSync: Date.now() });
         setSyncSuccess(true);
         setTimeout(() => setSyncSuccess(false), 3000);
       } else {
-        alert("Gagal sinkronisasi.");
+        alert("Gagal sinkronisasi. Pastikan spreadsheet masih tersedia.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Sesi berakhir, silakan login ulang.");
+      alert("Gagal sync: " + (err.message || "Error tidak diketahui"));
     } finally {
       setIsSyncing(false);
     }
   };
 
   const handleRestoreCloud = async () => {
-    if (!profile?.spreadsheetId) return;
+    if (!profile?.spreadsheetId) {
+      alert("Belum terhubung ke Google Drive. Silakan connect dulu.");
+      return;
+    }
+    
     const isConfirmed = await confirm({
       title: "Restore dari Cloud?",
       message: "Data lokal Anda akan diganti dengan data dari Google Sheets. Lanjutkan?",
@@ -151,20 +170,37 @@ export default function SettingsPage() {
 
     setIsSyncing(true);
     try {
-      await loginGoogle(); // Get token
-      const success = await downloadFromCloud(profile.spreadsheetId);
+      console.log("Starting cloud restore for spreadsheet:", profile.spreadsheetId);
+      
+      // Login dulu untuk pastikan token valid
+      const token = await loginGoogle();
+      if (!token) {
+        alert("Gagal login ke Google. Silakan coba lagi.");
+        return;
+      }
+      console.log("Login successful, token obtained, starting download...");
+      
+      // Gunakan token yang baru didapat untuk download
+      const success = await downloadFromCloud(profile.spreadsheetId, token);
+      console.log("Download result:", success);
+      
       if (success) {
+        // Update profil setelah restore berhasil
+        await saveProfile({ 
+          lastCloudSync: Date.now(),
+          isGoogleConnected: true
+        });
         setRestoreSuccess(true);
         setTimeout(() => {
           setRestoreSuccess(false);
           window.location.reload();
         }, 1500);
       } else {
-        alert("Gagal menarik data.");
+        alert("Gagal menarik data dari Google Sheets. Pastikan spreadsheet masih tersedia dan Anda memiliki akses.");
       }
-    } catch (err) {
-      console.error(err);
-      alert("Gagal login atau akses dibatalkan.");
+    } catch (err: any) {
+      console.error("Restore error:", err);
+      alert("Gagal login atau akses dibatalkan: " + (err.message || "Error tidak diketahui"));
     } finally {
       setIsSyncing(false);
     }
@@ -353,6 +389,68 @@ export default function SettingsPage() {
     window.location.reload();
   };
 
+  const handleDeleteAllData = async () => {
+    const isConfirmed = await confirm({
+      title: "Hapus Semua Data?",
+      message: "Semua data lokal (produk, transaksi, supplier, dll) akan dihapus permanen. Ini tidak dapat dibatalkan.",
+      type: "danger",
+      confirmText: "Ya, Hapus Semua",
+      cancelText: "Batal"
+    });
+    if (!isConfirmed) return;
+
+    try {
+      // Clear all tables
+      await db.transaction('rw', [
+        db.storeProfile, db.categories, db.products, db.suppliers,
+        db.transactions, db.transactionItems, db.stockMutations, db.hppHistory
+      ], async () => {
+        await db.storeProfile.clear();
+        await db.categories.clear();
+        await db.products.clear();
+        await db.suppliers.clear();
+        await db.transactions.clear();
+        await db.transactionItems.clear();
+        await db.stockMutations.clear();
+        await db.hppHistory.clear();
+      });
+
+      // Clear Google auth data
+      localStorage.removeItem('google_access_token');
+      localStorage.removeItem('google_access_token_expiry');
+
+      // Jika terhubung ke Google Sheets, hapus spreadsheet
+      if (profile?.spreadsheetId && profile?.isGoogleConnected) {
+        try {
+          const { initGoogleApi, loginGoogle } = await import("@/lib/google-sheets");
+          await initGoogleApi();
+          const token = await loginGoogle();
+          
+          if (token) {
+            const gapi = (window as any).gapi;
+            if (gapi?.client) {
+              gapi.client.setToken({ access_token: token });
+              // Hapus file spreadsheet
+              await gapi.client.drive.files.delete({
+                fileId: profile.spreadsheetId
+              });
+              console.log("Spreadsheet deleted:", profile.spreadsheetId);
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to delete spreadsheet:", err);
+          // Lanjutkan meskipun spreadsheet tidak bisa dihapus
+        }
+      }
+
+      alert("Semua data berhasil dihapus. Aplikasi akan memuat ulang.");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Gagal menghapus data: " + (err instanceof Error ? err.message : "Error tidak diketahui"));
+    }
+  };
+
   const handleAddCategory = async () => {
     if (!newCat.trim()) return;
     await db.categories.add({ name: newCat.trim() });
@@ -367,6 +465,38 @@ export default function SettingsPage() {
     });
     if (!isConfirmed) return;
     await db.categories.delete(id);
+  };
+
+  // ── Table Floor Handlers ──────────────────────────────────
+  const handleAddFloor = async () => {
+    if (!newFloorName.trim() || newFloorTableCount < 1) return;
+    const maxOrder = tableFloors?.length ? Math.max(...tableFloors.map(f => f.order)) : 0;
+    await db.tableFloors.add({
+      name: newFloorName.trim(),
+      tableCount: newFloorTableCount,
+      order: maxOrder + 1,
+    });
+    setNewFloorName("");
+    setNewFloorTableCount(10);
+  };
+
+  const handleDeleteFloor = async (id: number) => {
+    const isConfirmed = await confirm({
+      title: "Hapus Lantai?",
+      message: "Lantai dan konfigurasi mejanya akan dihapus.",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
+    await db.tableFloors.delete(id);
+  };
+
+  const handleUpdateFloorTableCount = async (id: number, count: number) => {
+    if (count < 1) return;
+    await db.tableFloors.update(id, { tableCount: count });
+  };
+
+  const handleUpdateFloorName = async (id: number, name: string) => {
+    await db.tableFloors.update(id, { name });
   };
 
   return (
@@ -557,6 +687,93 @@ export default function SettingsPage() {
               </div>
             </SettingsSection>
 
+            {profile?.useTable && (
+              <SettingsSection title="Pengaturan Meja" subtitle="Lantai & Jumlah" icon={Layers}>
+                <div className="p-5 space-y-5">
+                  {/* Add new floor */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Tambah Lantai Baru</p>
+                    <div className="flex gap-2">
+                      <Input
+                        className="h-11 bg-muted/40 border-none rounded-xl px-4 text-sm flex-1"
+                        placeholder="Nama lantai (cth: Lantai 1)"
+                        value={newFloorName}
+                        onChange={e => setNewFloorName(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && handleAddFloor()}
+                      />
+                      <div className="flex items-center gap-1 bg-muted/40 rounded-xl px-2">
+                        <button
+                          onClick={() => setNewFloorTableCount(Math.max(1, newFloorTableCount - 1))}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-black">{newFloorTableCount}</span>
+                        <button
+                          onClick={() => setNewFloorTableCount(newFloorTableCount + 1)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <Button onClick={handleAddFloor} size="icon" className="h-11 w-11 rounded-xl gradient-primary text-white shrink-0">
+                        <Plus className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Floor list */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Daftar Lantai</p>
+                    {(!tableFloors || tableFloors.length === 0) && (
+                      <div className="w-full py-6 text-center bg-muted/20 rounded-xl border border-dashed border-border/50">
+                        <Layers className="w-6 h-6 mx-auto text-muted-foreground/40 mb-2" />
+                        <p className="text-[0.625rem] text-muted-foreground italic">Belum ada lantai. Tambahkan lantai untuk mengatur meja.</p>
+                      </div>
+                    )}
+                    {tableFloors?.map(floor => (
+                      <div key={floor.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl border border-border/10">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Layers className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <Input
+                            className="h-8 bg-transparent border-none px-0 text-sm font-bold focus:bg-muted/30 focus:px-2 rounded-lg transition-all"
+                            value={floor.name}
+                            onChange={e => floor.id && handleUpdateFloorName(floor.id, e.target.value)}
+                          />
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground">Jumlah meja:</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => floor.id && handleUpdateFloorTableCount(floor.id, floor.tableCount - 1)}
+                                className="w-6 h-6 rounded-md flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-8 text-center text-xs font-black">{floor.tableCount}</span>
+                              <button
+                                onClick={() => floor.id && handleUpdateFloorTableCount(floor.id, floor.tableCount + 1)}
+                                className="w-6 h-6 rounded-md flex items-center justify-center bg-muted hover:bg-muted/80 transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => floor.id && handleDeleteFloor(floor.id)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </SettingsSection>
+            )}
+
             <SettingsSection title="Koneksi Cloud" subtitle="Sinkronisasi Online" icon={Cloud}>
               <div className="p-4 space-y-4">
                 {profile?.isGoogleConnected ? (
@@ -568,6 +785,9 @@ export default function SettingsPage() {
                       <div className="flex-1">
                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Terhubung ke Google</p>
                         <p className="text-[8px] text-emerald-600/60 font-bold uppercase mt-0.5">
+                          {profile.email ? profile.email : 'Belum ada email'}
+                        </p>
+                        <p className="text-[7px] text-emerald-600/50 mt-0.5">
                           Sync: {profile.lastCloudSync ? new Date(profile.lastCloudSync).toLocaleString('id-ID') : 'Belum pernah'}
                         </p>
                       </div>
@@ -677,7 +897,8 @@ export default function SettingsPage() {
             </SettingsSection>
 
             <SettingsSection title="Tindakan Berbahaya" subtitle="System" icon={Trash2}>
-              <SettingsRow icon={RotateCcw} iconColor="bg-rose-500/10 text-rose-500" label="Reset Toko" desc="Setup dari awal" onClick={handleResetOnboarding} danger last />
+              <SettingsRow icon={RotateCcw} iconColor="bg-rose-500/10 text-rose-500" label="Reset Toko" desc="Setup dari awal" onClick={handleResetOnboarding} danger />
+              <SettingsRow icon={Trash2} iconColor="bg-rose-500/10 text-rose-500" label="Hapus Semua Data" desc="Hapus semua data lokal" onClick={handleDeleteAllData} danger last />
             </SettingsSection>
           </div>
         </div>
@@ -708,6 +929,15 @@ export default function SettingsPage() {
             <div className="w-8 h-[1px] bg-foreground/20" />
             <p className="text-[0.5625rem] font-medium italic">Digitalizing Indonesian UMKM with ❤️</p>
             <div className="w-8 h-[1px] bg-foreground/20" />
+          </div>
+
+          <div className="flex items-center gap-6 pt-4">
+            <a href="/terms-of-service" className="text-[0.6875rem] font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Syarat & Ketentuan
+            </a>
+            <a href="/privacy-policy" className="text-[0.6875rem] font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Kebijakan Privasi
+            </a>
           </div>
         </div>
       </div>

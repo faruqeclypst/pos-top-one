@@ -7,9 +7,12 @@ export function useStoreProfile() {
   const isLoading = profiles === undefined;
 
   const saveProfile = async (data: Partial<StoreProfile>) => {
+    console.log("saveProfile called with:", data);
     const existing = await db.storeProfile.get(1);
+    console.log("Existing profile:", existing);
     if (existing) {
       await db.storeProfile.update(1, data);
+      console.log("Profile updated");
     } else {
       await db.storeProfile.put({
         id: 1,
@@ -22,8 +25,17 @@ export function useStoreProfile() {
         useTable: data.useTable ?? false,
         usePhoneNumber: data.usePhoneNumber ?? true,
         logo: data.logo || null,
+        isGoogleConnected: data.isGoogleConnected ?? false,
+        spreadsheetId: data.spreadsheetId,
+        lastCloudSync: data.lastCloudSync,
+        email: data.email,
       });
+      console.log("Profile created");
     }
+    
+    // Verify save
+    const saved = await db.storeProfile.get(1);
+    console.log("Profile after save:", saved);
   };
 
   return {

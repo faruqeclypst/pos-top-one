@@ -8,6 +8,28 @@ import { UtensilsCrossed, Store, Briefcase, CheckCircle2, ArrowRight } from "luc
 import { motion, AnimatePresence } from "framer-motion";
 import { initGoogleApi, loginGoogle, findOrCreateSpreadsheet, downloadFromCloud } from "@/lib/google-sheets";
 
+// Fungsi untuk mendapatkan email dari Google
+async function getGoogleEmail(token: string): Promise<string> {
+  try {
+    console.log('Fetching email with token:', token.substring(0, 20) + '...');
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log('Response status:', response.status);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('Email response:', data);
+    return data.email || '';
+  } catch (err) {
+    console.error('Failed to get email:', err);
+    return '';
+  }
+}
+
 export default function Onboarding() {
   const { saveProfile } = useStoreProfile();
   const [step, setStep] = useState(1);
@@ -31,9 +53,25 @@ export default function Onboarding() {
       await initGoogleApi();
       const token = await loginGoogle();
       if (!token) throw new Error("Gagal mendapatkan token Google");
+      
+      console.log("Token obtained:", token.substring(0, 20) + '...');
+      
+      // Ambil email dari Google
+      const email = await getGoogleEmail(token);
+      console.log("Google email:", email);
+      
       const spreadsheetId = await findOrCreateSpreadsheet(token);
       
       if (spreadsheetId) {
+        // Simpan isGoogleConnected dan spreadsheetId ke database
+        await saveProfile({
+          isGoogleConnected: true,
+          spreadsheetId,
+          email: email, // Simpan email
+        });
+        
+        console.log("Profile saved:", { isGoogleConnected: true, spreadsheetId, email });
+        
         const success = await downloadFromCloud(spreadsheetId);
         if (success) {
           alert("Data berhasil ditemukan! Memuat aplikasi...");
@@ -41,7 +79,7 @@ export default function Onboarding() {
           return;
         }
       }
-      alert("Akun Google terhubung, silakan lanjut setup nama toko.");
+      // Jika tidak ada data di cloud, langsung lanjut ke step 2 tanpa alert
       setStep(2);
     } catch (err) {
       console.error(err);

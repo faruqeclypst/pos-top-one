@@ -5,6 +5,7 @@ export interface StoreProfile {
   name: string;
   address: string;
   phone: string;
+  email?: string; // Google email
   theme: string;
   accentColor?: string; // e.g. "violet", "blue", "emerald", "rose", "amber"
   logo?: Blob | null;
@@ -91,6 +92,13 @@ export interface HPPHistory {
   createdAt: number;
 }
 
+export interface TableFloor {
+  id?: number; // Auto-increment
+  name: string; // e.g. "Lantai 1", "Rooftop"
+  tableCount: number; // Jumlah meja di lantai ini
+  order: number; // Urutan tampil
+}
+
 const db = new Dexie('TokoKuPOS') as Dexie & {
   storeProfile: EntityTable<StoreProfile, 'id'>;
   categories: EntityTable<Category, 'id'>;
@@ -100,6 +108,7 @@ const db = new Dexie('TokoKuPOS') as Dexie & {
   transactionItems: EntityTable<TransactionItem, 'id'>;
   stockMutations: EntityTable<StockMutation, 'id'>;
   hppHistory: EntityTable<HPPHistory, 'id'>;
+  tableFloors: EntityTable<TableFloor, 'id'>;
 };
 
 // Schema versioning
@@ -125,6 +134,10 @@ db.version(4).stores({
 
 db.version(5).stores({
   products: 'id, sku, barcode, category, name, trackStock',
+});
+
+db.version(6).stores({
+  tableFloors: '++id, name, order',
 });
 
 export default db;

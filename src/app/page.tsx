@@ -230,6 +230,17 @@ export default function DashboardPage() {
         transaction={selectedTransaction}
         onClose={() => setSelectedTransaction(null)}
       />
+
+      <div className="fixed bottom-0 left-0 right-0 p-6 text-center opacity-40 pointer-events-none">
+        <div className="flex items-center justify-center gap-6 pointer-events-auto">
+          <a href="/terms-of-service" className="text-[0.6875rem] font-medium text-foreground hover:text-primary transition-colors">
+            Syarat & Ketentuan
+          </a>
+          <a href="/privacy-policy" className="text-[0.6875rem] font-medium text-foreground hover:text-primary transition-colors">
+            Kebijakan Privasi
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

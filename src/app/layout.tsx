@@ -62,21 +62,10 @@ export default function RootLayout({
           <FontSizeProvider>
             <ConfirmProvider>
               <AppShell>{children}</AppShell>
-              <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
-              <Script src="https://apis.google.com/js/api.js" strategy="lazyOnload" />
             </ConfirmProvider>
           </FontSizeProvider>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                if ('serviceWorker' in navigator) {
-                  window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js');
-                  });
-                }
-              `,
-            }}
-          />
+          <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
+          <Script src="https://apis.google.com/js/api.js" strategy="lazyOnload" />
         </ThemeProvider>
       </body>
     </html>
