@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import db, { type Transaction } from "@/lib/db";
 import TransactionDetailModal from "@/components/TransactionDetailModal";
@@ -105,6 +105,17 @@ export default function ReportsPage() {
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.logo) {
+      const url = URL.createObjectURL(profile.logo);
+      setLogoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setLogoUrl(null);
+    }
+  }, [profile?.logo]);
 
   const allTransactions = useLiveQuery(() => db.transactions.reverse().toArray());
   const allItems = useLiveQuery(() => db.transactionItems.toArray());
@@ -361,8 +372,14 @@ export default function ReportsPage() {
               <div className="relative z-10 space-y-5">
                 <div className="flex items-center justify-between">
                   <div className="bg-white dark:bg-zinc-900 p-2 rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden shadow-md">
-                    <img src="/logo-default.png" alt="" className="w-full h-full object-contain block dark:hidden" />
-                    <img src="/logo-dark.png" alt="" className="w-full h-full object-contain hidden dark:block" />
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="" className="w-full h-full object-contain" />
+                    ) : (
+                      <>
+                        <img src="/logo-default.png" alt="" className="w-full h-full object-contain block dark:hidden" />
+                        <img src="/logo-dark.png" alt="" className="w-full h-full object-contain hidden dark:block" />
+                      </>
+                    )}
                   </div>
                   <Badge className="bg-white/20 text-white border-none px-3 py-1 font-black text-[0.6rem] tracking-widest uppercase rounded-full">
                     {range.startsWith("date:") ? selectedDate : range.startsWith("range:") ? range.split("range:")[1].replace("_", " - ") : RANGES.find(r => r.id === range)?.label}

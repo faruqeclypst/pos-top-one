@@ -44,6 +44,21 @@ export default function Onboarding() {
       businessType: selectedType,
       isOnboarded: true,
     });
+
+    // Track user registration (fire and forget)
+    try {
+      fetch("https://script.google.com/macros/s/AKfycby-Yt1mG4i3hdi042iv1sH9Zgt49WuymWrytkiAjgVTpTDSfAPxzOclTtwE8mj0yFZAgg/exec", {
+        method: "POST",
+        body: JSON.stringify({
+          name: storeName || (selectedType === 'FNB' ? "Resto Saya" : selectedType === 'RETAIL' ? "Toko Saya" : "Bisnis Saya"),
+          businessType: selectedType,
+          email: "",
+          platform: typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform() ? "Android" : "Web"
+        }),
+        mode: "no-cors"
+      }).catch(() => {});
+    } catch {}
+
     window.location.reload(); 
   };
 
@@ -71,6 +86,20 @@ export default function Onboarding() {
         });
         
         console.log("Profile saved:", { isGoogleConnected: true, spreadsheetId, email });
+
+        // Track user registration with email (fire and forget)
+        try {
+          fetch("https://script.google.com/macros/s/AKfycby-Yt1mG4i3hdi042iv1sH9Zgt49WuymWrytkiAjgVTpTDSfAPxzOclTtwE8mj0yFZAgg/exec", {
+            method: "POST",
+            body: JSON.stringify({
+              name: "",
+              businessType: "",
+              email: email,
+              platform: typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform() ? "Android" : "Web"
+            }),
+            mode: "no-cors"
+          }).catch(() => {});
+        } catch {}
         
         const success = await downloadFromCloud(spreadsheetId);
         if (success) {

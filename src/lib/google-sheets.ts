@@ -11,6 +11,13 @@ let gsisInited = false;
 let currentAccessToken: string | null = null;
 let initPromise: Promise<void> | null = null;
 
+export function clearGoogleSession() {
+  currentAccessToken = null;
+  initPromise = null;
+  gapiInited = false;
+  gsisInited = false;
+}
+
 export function initGoogleApi(): Promise<void> {
   if (initPromise) return initPromise;
 

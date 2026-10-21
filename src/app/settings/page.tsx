@@ -97,6 +97,46 @@ export default function SettingsPage() {
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [restoreSuccess, setRestoreSuccess] = useState(false);
 
+  // Logo
+  const logoRef = useRef<HTMLInputElement>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.logo) {
+      const url = URL.createObjectURL(profile.logo);
+      setLogoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setLogoUrl(null);
+    }
+  }, [profile?.logo]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Compress to max 256px for storage efficiency
+    const blob = await new Promise<Blob>((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX = 256;
+          let w = img.width, h = img.height;
+          if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
+          else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+          canvas.toBlob((b) => resolve(b!), "image/webp", 0.8);
+        };
+        img.src = ev.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+    await saveProfile({ logo: blob });
+  };
+
   // Table/Floor management
   const tableFloors = useLiveQuery(() => db.tableFloors.orderBy('order').toArray());
   const [newFloorName, setNewFloorName] = useState("");
@@ -218,11 +258,31 @@ export default function SettingsPage() {
     if (!isConfirmed) return;
 
     // Putuskan koneksi Google dan hapus profil
-    await saveProfile({ isGoogleConnected: false, spreadsheetId: undefined });
+    await saveProfile({ isGoogleConnected: false, spreadsheetId: undefined, email: undefined });
     
     // Hapus token dari memory
     localStorage.removeItem('google_access_token');
     localStorage.removeItem('google_access_token_expiry');
+
+    // Sign out dari Google (native + web) agar bisa pilih akun lain
+    try {
+      const { Capacitor } = await import("@capacitor/core");
+      const { GoogleAuth } = await import("@codetrix-studio/capacitor-google-auth");
+      const { clearGoogleSession } = await import("@/lib/google-sheets");
+      clearGoogleSession();
+      if (Capacitor.isNativePlatform()) {
+        await GoogleAuth.signOut();
+      } else {
+        // Web: revoke token via google accounts
+        const token = (window as any).gapi?.client?.getToken?.()?.access_token;
+        if (token) {
+          (window as any).google?.accounts?.oauth2?.revoke?.(token);
+        }
+        (window as any).gapi?.client?.setToken?.(null);
+      }
+    } catch (e) {
+      console.warn("Google signOut failed (non-critical):", e);
+    }
     
     // Wipe seluruh database lokal agar "fresh"
     await db.delete();
@@ -525,10 +585,24 @@ export default function SettingsPage() {
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 blur-[60px] rounded-full -mr-16 -mt-16" />
             
             <div className="relative z-10 flex items-center gap-6 w-full">
-              <div className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-border shadow-sm overflow-hidden p-2">
-                <img src="/logo-default.png" alt="Logo" className="w-full h-full object-contain block dark:hidden" />
-                <img src="/logo-dark.png" alt="Logo" className="w-full h-full object-contain hidden dark:block" />
-              </div>
+              <button 
+                onClick={() => logoRef.current?.click()}
+                className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-border shadow-sm overflow-hidden p-2 relative group/logo active:scale-95 transition-all"
+                title="Klik untuk ganti logo"
+              >
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <>
+                    <img src="/logo-default.png" alt="Logo" className="w-full h-full object-contain block dark:hidden" />
+                    <img src="/logo-dark.png" alt="Logo" className="w-full h-full object-contain hidden dark:block" />
+                  </>
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/logo:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                  <span className="text-[8px] font-black text-white uppercase tracking-widest text-center leading-tight">Ganti<br/>Logo</span>
+                </div>
+              </button>
+              <input type="file" accept="image/*" className="hidden" ref={logoRef} onChange={handleLogoUpload} />
               <div className="flex-1 min-w-0 space-y-2">
                 <div>
                   <h2 className="text-xl font-black tracking-tight">{profile?.name || "Nama Toko"}</h2>

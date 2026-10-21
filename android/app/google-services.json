@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "957204893367",
+    "project_id": "tokoku-495313",
+    "storage_bucket": "tokoku-495313.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:957204893367:android:f163b2b3bdcf6be128c732",
+        "android_client_info": {
+          "package_name": "com.tokokupos.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "957204893367-82kvar7c582fthc6sia3g7hnod7iegjv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tokokupos.app",
+            "certificate_hash": "063972b147653a43ad7ecd4497f5d4934a60afa8"
+          }
+        },
+        {
+          "client_id": "957204893367-j1ub6tif1rtoh7kiqig3m11s7q8aagiu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9H4VAuTqY414hwVvMBUmmYpE9999tIcE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "957204893367-j1ub6tif1rtoh7kiqig3m11s7q8aagiu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

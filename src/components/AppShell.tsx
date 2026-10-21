@@ -33,6 +33,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const isPOS = pathname === "/pos";
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.logo) {
+      const url = URL.createObjectURL(profile.logo);
+      setLogoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setLogoUrl(null);
+    }
+  }, [profile?.logo]);
 
   useEffect(() => {
     setMounted(true);
@@ -59,6 +70,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!profile?.isOnboarded) {
+    // Allow access to legal pages without onboarding
+    if (pathname === "/privacy-policy" || pathname === "/terms-of-service") {
+      return <>{children}</>;
+    }
     return <Onboarding />;
   }
 
@@ -67,8 +82,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-20 flex-shrink-0 flex-col items-center py-4 bg-background border-r border-border/50">
         {/* Logo */}
-        <div className="w-12 h-12 rounded-xl overflow-hidden mb-6">
-          <img src="/logo-default.png" alt="TokoKu" className="w-full h-full object-contain" />
+        <div className="w-12 h-12 overflow-hidden mb-6">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+          ) : (
+            <img src="/logo-default.png" alt="TokoKu" className="w-full h-full object-contain" />
+          )}
         </div>
         
         {/* Nav Items */}
